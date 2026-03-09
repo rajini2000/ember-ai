@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+venv/
+.env
+
+# Large model checkpoints (keep only best_model.zip)
+models/ember_dqn_*_steps.zip
+models/ember_dqn_final.zip
+
+# Large datasets (download from Kaggle — see data/DATASETS.md)
+data/real/
+
+# Generated data (recreate with: python src/data_generator.py)
+data/synthetic/
+
+# Generated results/plots
+results/
+
+# SQLite database (created fresh on server start)
+predictions.db
+
+# TensorBoard logs
+results/logs/
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db

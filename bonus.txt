@@ -1,0 +1,96 @@
+Seneca Polytechnic
+School of Software Design & Data Science
+SEP600 – Course Project Bonus – Winter 2026
+Individual Deliverable Plan – Due Tuesday, Mar 10, 2026, 11:59 on Blackboard.
+READ THIS: Academic Integrity Policy
+https://www.senecapolytechnic.ca/about/policies/academic-integrity-policy.html
+This includes but is not limited to the following:
+1. Everything you put into your report must be your own work and you must be able to explain
+how and why you put that into your report.
+2. All code that you write must be your own work and you must be able to explain how and why
+you put that into your code.
+See citation section for GenAI use policy
+This bonus potion of the project is designed to improve your grade as well as ensuring consistent
+progress for the course project. The bonus grade will be calculated into the same category as the midterm and exam grade. ie. It’ll count towards the requirement of getting a weight average of 50% of
+higher on the mid-term and exam to pass the course. The bonus grade is up to 5%.
+All bonus milestone demonstration will be graded base on completion. No part mark will be awarded.
+Instruction and Requirement:
+1. Any group member who want to participant in the bonus mark activities must submit an
+individual deliverable plan that clearly define all milestones deliverables that are tangible and
+measurable, ie. Can be observed or measured with a simple Yes/No for completion. The
+deliverables cannot be dependent or overlap with another group member’s deliverables.
+2. Each milestone deliverable must be equivalent to at least 4 hours of work and must be
+approved by the Professor. However, there are no restriction on the sequence in completing or
+presenting the deliverables. ie. You can spend 20 hours of work and complete them all over a
+weekend.
+3. Only one deliverable will be marked per demo day. Each demonstration will take around 5
+minutes on walking through the completion of your deliverable. No presentation slides or report
+is required.
+4. All milestone deliverables must be new work. All work or tasks completed before the milestone
+presentation cannot be used toward the bonus mark.
+5. Your milestones must lead to a course project that include all three of following requirement. No
+bonus will be awarded if your completed project does not have all of the following. Each
+milestone should show progressive integration of the requirements.
+
+SEP600 – Course Project Bonus
+
+Page 1
+
+a) Connectivity to a server for data-logging: Connect your device to an online or local server
+(not just to a text file) for data-logging. The server must also have a display to output the
+data in a graphical format in real-time.
+b) AI Interaction: Connect your device to an online or local pre-trained ML or AI model to
+perform analysis or for decision masking. The response from the model must cause an action
+on at least once external device (ie. moving a motor). You must be able to justify the use of
+ML or AI. ie. Why do you need to use ML or AI instead of using conditional statement?
+c) Digital-Twins: Connect your device to an online or local server with a graphical interface that
+is configured to act a digital twins. The digital twins should be a duplicate of the physical
+embedded devices with real-time synchronization on state and behaviour. ie. For a system
+composing of a button and a LED, you can press the physical button or the virtual button,
+and both the physical LED and the virtual LED should turn ON.
+6. No late submission of milestone deliverables will be considered. Only one milestone will be
+marked per demo day but the milestone does not have to be presented sequentially. ie. If you
+missed your deliverable for demo #1, you may demonstrate milestone #1 for mark during demo
+#2 but you cannot demonstrate both milestone #1 and #2 for 2 marks in the same demo.
+Each deliverable must be provided with as much details as possible. Lack of details and below the 4-hour
+scope such as “Connect the LED and make it work.” will result in not having your deliverable plan
+approved.
+Example of acceptable deliverables:
+•
+
+Sensor integration: Demonstration of integrating the MPU6050 sensor over I2C into my project
+setup and displaying it’s reading in gravity unit “g” (2 hours) and integrating the MQ-2 gas sensor
+and displaying it’s reading in “ppm” (2 hours) on the serial terminal.
+
+•
+
+IoT Connection: Demonstration of connecting my project to a server using a ESP32 module,
+sending data to the server, and displaying the logged data on the server through a browser.
+
+SEP600 – Course Project Bonus
+
+Page 2
+
+Individual Deliverable Plan (to be completed by each member who want participant in the bonus mark
+activities). Use this table or create your own.
+Deliverable
+Bonus Milestone #1 [1%]
+Demo: Mar 12 between 2PM-3PM in room A3058
+
+Bonus Milestone #2 [1%]
+Demo: Mar 17 during regular lab-time
+
+Bonus Milestone #3 [1%]
+Demo: Mar 19 between 2PM-3PM in room A3058
+
+Bonus Milestone #4 [1%]
+Demo: Mar 24 during regular lab-time
+
+Bonus Milestone #5 [1%]
+Demo: Mar 26 between 2PM-3PM in room A3058
+
+SEP600 – Course Project Bonus
+
+Page 3
+
+
