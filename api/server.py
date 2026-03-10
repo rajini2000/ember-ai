@@ -25,7 +25,7 @@ SRC_DIR  = os.path.join(BASE_DIR, 'src')
 sys.path.insert(0, SRC_DIR)
 
 from predict        import EmberPredictor
-from api.database   import init_db, log_prediction, get_history, get_prediction_count
+from api.database   import init_db, log_prediction, get_history, get_prediction_count, get_registered_devices
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -85,17 +85,21 @@ def predict():
     if 'PM2.5' not in sensor_data and 'pm25' not in sensor_data:
         return jsonify({'error': 'Missing required field: PM2.5'}), 400
 
+    # Read device_id (MAC address or device code) — optional field
+    device_id = sensor_data.pop('device_id', 'unknown')
+
     # Run the AI model
     result = predictor.predict(sensor_data)
 
-    # Log to database
-    log_prediction(sensor_data, result)
+    # Log to database with device ID
+    log_prediction(sensor_data, result, device_id)
 
     # Build response
     response = {
         'alarm':     result['alarm'],
         'aqi':       result['aqi_estimate'],
         'category':  result['category'],
+        'device_id': device_id,
         'timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
     }
 
@@ -130,9 +134,11 @@ def history():
         ]
     }
     """
-    rows = get_history(limit=50)
+    device_id = request.args.get('device_id', None)  # optional filter
+    rows = get_history(limit=50, device_id=device_id)
     return jsonify({
         'count':       len(rows),
+        'device_id':   device_id or 'all',
         'predictions': rows,
     }), 200
 
@@ -163,6 +169,29 @@ def status():
         'server_time':        datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
     }), 200
 
+
+# ---------------------------------------------------------------------------
+# GET /devices — list all devices that have sent data
+# ---------------------------------------------------------------------------
+@app.route('/devices', methods=['GET'])
+def devices():
+    """
+    Returns all unique device IDs that have sent data to this API.
+
+    Response:
+    {
+        "devices": [
+            {"device_id": "AA:BB:CC:DD:EE:FF", "total_readings": 142},
+            {"device_id": "ember-simulator",    "total_readings": 7}
+        ]
+    }
+    """
+    return jsonify({'devices': get_registered_devices()}), 200
+
+
+# ---------------------------------------------------------------------------
+# GET /history?device_id=XX — filter history by device
+# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # GET / — health check (Render.com checks this on deploy)

@@ -11,7 +11,7 @@ import json
 from datetime import datetime
 
 # Store database at the project root (one level above api/)
-ROOT   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT    = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(ROOT, 'predictions.db')
 
 
@@ -23,6 +23,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS predictions (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp   TEXT    NOT NULL,
+            device_id   TEXT    DEFAULT 'unknown',
             pm25        REAL,
             pm10        REAL,
             temperature REAL,
@@ -38,25 +39,27 @@ def init_db():
     conn.close()
 
 
-def log_prediction(sensor_data: dict, result: dict):
+def log_prediction(sensor_data: dict, result: dict, device_id: str = 'unknown'):
     """
     Save one prediction to the database.
 
     Args:
         sensor_data : the raw sensor reading dict from the hardware
         result      : the dict returned by EmberPredictor.predict()
+        device_id   : MAC address or device code from the hardware
     """
     conn = sqlite3.connect(DB_PATH)
     c    = conn.cursor()
     c.execute('''
         INSERT INTO predictions
-            (timestamp, pm25, pm10, temperature, humidity, mq_analog,
+            (timestamp, device_id, pm25, pm10, temperature, humidity, mq_analog,
              alarm, aqi, category, raw_input)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
-        float(sensor_data.get('PM2.5',      0)),
-        float(sensor_data.get('PM10',       0)),
+        device_id,
+        float(sensor_data.get('PM2.5',       0)),
+        float(sensor_data.get('PM10',        0)),
         float(sensor_data.get('temperature', 0)),
         float(sensor_data.get('humidity',    0)),
         float(sensor_data.get('MQ_analog',   0)),
@@ -69,25 +72,48 @@ def log_prediction(sensor_data: dict, result: dict):
     conn.close()
 
 
-def get_history(limit: int = 50) -> list:
+def get_history(limit: int = 50, device_id: str = None) -> list:
     """
     Return the last `limit` predictions, newest first.
+    Optionally filter by device_id.
 
     Returns a list of dicts — each dict is one row.
     """
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row          # makes rows behave like dicts
+    conn.row_factory = sqlite3.Row
     c    = conn.cursor()
-    c.execute('''
-        SELECT id, timestamp, pm25, pm10, temperature, humidity,
-               mq_analog, alarm, aqi, category
-        FROM   predictions
-        ORDER  BY id DESC
-        LIMIT  ?
-    ''', (limit,))
+
+    if device_id:
+        c.execute('''
+            SELECT id, timestamp, device_id, pm25, pm10, temperature, humidity,
+                   mq_analog, alarm, aqi, category
+            FROM   predictions
+            WHERE  device_id = ?
+            ORDER  BY id DESC
+            LIMIT  ?
+        ''', (device_id, limit))
+    else:
+        c.execute('''
+            SELECT id, timestamp, device_id, pm25, pm10, temperature, humidity,
+                   mq_analog, alarm, aqi, category
+            FROM   predictions
+            ORDER  BY id DESC
+            LIMIT  ?
+        ''', (limit,))
+
     rows = [dict(row) for row in c.fetchall()]
     conn.close()
     return rows
+
+
+def get_registered_devices() -> list:
+    """Return list of all unique device IDs that have sent data."""
+    conn = sqlite3.connect(DB_PATH)
+    c    = conn.cursor()
+    c.execute('SELECT DISTINCT device_id, COUNT(*) as count FROM predictions GROUP BY device_id')
+    devices = [{'device_id': row[0], 'total_readings': row[1]} for row in c.fetchall()]
+    conn.close()
+    return devices
 
 
 def get_prediction_count() -> int:
