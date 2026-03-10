@@ -230,3 +230,96 @@ python -m api.simulate_hardware --url https://ember-ai.onrender.com
 - [ ] All predictions stored in SQLite with timestamp
 - [ ] `GET /history` returns last 50 logged predictions
 - [ ] `GET /status` returns server uptime and model version
+
+---
+
+## DEMO SCRIPT — March 12, 2–3 PM, Room A3058
+**Follow these steps in order. Do not skip any step.**
+
+---
+
+### 5 minutes before the demo
+Open this URL in your browser to wake up the server (free tier sleeps):
+```
+https://ember-ai-ews2.onrender.com/status
+```
+Wait until you see `"status": "online"`. If you see a loading screen, wait 60 seconds.
+
+---
+
+### Step 1 — Show the server is live (browser)
+Open in browser:
+```
+https://ember-ai-ews2.onrender.com/status
+```
+**Say to professor:**
+> "This is my AI model deployed as a live REST API on Render.com.
+> You can see the server is online, it has been running for X seconds,
+> and it is model version 1.0.0. Anyone in the world can access this URL."
+
+---
+
+### Step 2 — Show the AI making a decision (terminal)
+Open terminal and run:
+```bash
+cd "C:\Users\Acer\OneDrive\Desktop\Seneca\sep600 winter 2026\AI RL"
+python -m api.simulate_hardware --url https://ember-ai-ews2.onrender.com
+```
+Wait for the output. Point to reading 4 when it appears:
+```
+--- Reading 4/7: 4 — PEAK — vape smoke fully detected ---
+  *** ALARM: ON ***   AQI=500.0  (HAZARDOUS)
+```
+**Say to professor:**
+> "This simulates the K64F hardware sending sensor readings to my server.
+> When PM2.5 reaches 709 µg/m³ — which is vape or smoke —
+> the AI detects the danger and returns alarm ON with AQI 500 HAZARDOUS.
+> For clean air readings, the alarm is OFF."
+
+---
+
+### Step 3 — Show the database logging (browser)
+Open in browser:
+```
+https://ember-ai-ews2.onrender.com/history
+```
+**Say to professor:**
+> "Every prediction is automatically stored in a SQLite database with a timestamp.
+> This GET /history endpoint returns the last 50 predictions.
+> You can see the alarm was ON for the danger readings
+> and OFF when the air was clean — all logged with exact timestamps."
+
+---
+
+### Step 4 — If the professor asks "Why use AI instead of if/else rules?"
+**Say:**
+> "The old system used fixed rules — if PM2.5 is above 150 for 2 readings, trigger alarm.
+> The problem with fixed rules is they never adapt. They don't consider
+> combinations of sensors, they don't handle sensor drift, and they can't
+> learn from experience.
+>
+> Our AI was trained using Reinforcement Learning — specifically the DQN algorithm.
+> It was penalised heavily for missing real danger events — minus 50 points —
+> and only minus 5 points for a false alarm. This reflects the real-world priority:
+> never miss a fire or smoke event.
+>
+> After training on 125,000 timesteps, the model achieves 99.76% accuracy
+> with a 0% false negative rate — it has never missed a real danger event in testing."
+
+---
+
+### Step 5 — If the professor asks "Where is the physical hardware?"
+**Say:**
+> "My partner Mirac is building the hardware — the FRDM-K64F with PMS5003,
+> BME680, and MQ gas sensors. My role is the AI and the server side.
+> The simulator sends the exact same JSON format that the real hardware will send.
+> When Mirac connects the ESP32 to my Render.com URL, the real sensor data
+> will flow through this same system automatically — no code changes needed."
+
+---
+
+### What a successful demo looks like
+- Browser shows `"status": "online"` ✓
+- Terminal shows alarm switching ON at reading 3/4/5 and OFF at reading 7 ✓
+- Browser /history shows all 7 readings stored with timestamps ✓
+- You can answer the professor's questions using the scripts above ✓
