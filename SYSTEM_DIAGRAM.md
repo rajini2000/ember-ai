@@ -8,129 +8,91 @@ How everything connects together.
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        PHYSICAL HARDWARE                        │
-│                         (Mirac's part)                          │
 │                                                                 │
 │   PMS5003 ──┐                                                   │
-│   BME680  ──┼──► FRDM-K64F ──► ESP32 ──► WiFi (internet)       │
-│   MQ Gas  ──┘    (reads sensors    (AT+CIPSEND   (Render.com)   │
-│                   every 2.5s)       HTTP POST)                  │
-└─────────────────────────────────────────────────────────────────┘
-                                            │
-                                            │ HTTP POST
-                                            │ (sensor JSON)
-                                            ▼
+│   BME680  ──┼──► FRDM-K64F                                      │
+│   MQ Gas  ──┘                                                   │
+│                                                                 │
+│   ┌──────────────────────────────────────────────────────┐      │
+│   │           RAJINI'S K64F FIRMWARE (AI side)           │      │
+│   │                                                      │      │
+│   │  M1: Compute 16 RL features → log training_data.csv │      │
+│   │      SW2=DANGER / SW3=SAFE labels → RGB LED          │      │
+│   │                                                      │      │
+│   │  M2: Q-table lookup → ALARM ON/OFF → GPIO PTA2       │      │
+│   │      (ember_rl_policy.h in flash, no network)        │      │
+│   │                                                      │      │
+│   │  M3: AT+CWJAP? → WiFi OK? → CLOUD mode               │      │
+│   │                          → LOCAL mode (fallback)     │      │
+│   │                                                      │      │
+│   │  M4: RL alarm → log to alert_log.csv                 │      │
+│   │      "REPLAY" / "STATS" serial commands              │      │
+│   │                                                      │      │
+│   │  M5: Hold SW2 3s → calibrate → write calibration.csv│      │
+│   │      Boot → read calibration.csv → normalize input  │      │
+│   └──────────────────────────────────────────────────────┘      │
+│                                                                 │
+│   ┌──────────────────────────────────────────────────────┐      │
+│   │           MIRAC'S K64F FIRMWARE (hardware side)      │      │
+│   │                                                      │      │
+│   │  M1: OLED display (PM2.5, AQI, temp, alarm status)   │      │
+│   │  M2: ESP32 HTTP POST to Render.com API               │      │
+│   │  M3: SoftAP WiFi provisioning portal                 │      │
+│   │  M4: Web control panel (arm/disarm/thresholds)       │      │
+│   │  M5: Fire detection (multi-sensor fusion)            │      │
+│   └──────────────────────────────────────────────────────┘      │
+│                          │                                      │
+│                          │ ESP32 HTTP POST (Mirac M2)           │
+└──────────────────────────┼──────────────────────────────────────┘
+                           │
+                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    RENDER.COM SERVER                            │
+│                    RENDER.COM SERVER (Rajini)                   │
 │               https://ember-ai-ews2.onrender.com               │
 │                                                                 │
-│   ┌─────────────────────────────────────────────────────┐      │
-│   │              MILESTONE 1 — REST API + DASHBOARD      │      │
-│   │                   api/server.py                     │      │
-│   │                                                     │      │
-│   │   POST /predict ──► AI Model ──► alarm ON/OFF       │      │
-│   │   GET  /history ──► SQLite DB ──► last 50 results   │      │
-│   │   GET  /status  ──► uptime + model version          │      │
-│   │   GET  /        ──► Live Chart.js Dashboard         │      │
-│   └──────────────────────┬──────────────────────────────┘      │
-│                          │ JSON response includes:             │
-│                          │ { alarm, aqi, command }             │
-│                          ▼                                      │
-│   ┌─────────────────────────────────────────────────────┐      │
-│   │       MILESTONE 4 — Digital Twin Panel              │      │
-│   │         api/templates/digital_twin.html             │      │
-│   │                                                     │      │
-│   │   Virtual PM2.5 gauge  ──► mirrors K64F reading     │      │
-│   │   Virtual temp/humidity dials                       │      │
-│   │   Virtual alarm indicator (grey/flashing red)       │      │
-│   │   Arm/Disarm toggle ──► POST /arm ──► K64F          │      │
-│   └─────────────────────────────────────────────────────┘      │
-└─────────────────────────────────────────────────────────────────┘
-                          │
-                          │ JSON response (alarm + command)
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    FRDM-K64F FIRMWARE                           │
-│                        (Rajini's part)                          │
+│   POST /predict ──► DQN AI Model ──► alarm ON/OFF              │
+│   GET  /history ──► SQLite DB    ──► last 50 results           │
+│   GET  /        ──► Chart.js Dashboard (live charts)           │
+│   GET  /status  ──► uptime + model version                     │
 │                                                                 │
-│   ┌────────────────────────────────────────────────────┐        │
-│   │    MILESTONE 2 — On-Board RL Inference (C)         │        │
-│   │                                                    │        │
-│   │   ember_rl_policy.h loaded into flash              │        │
-│   │   16-feature state vector → Q-value lookup         │        │
-│   │   → ALARM ON/OFF decision (no network needed)      │        │
-│   │   → GPIO PTA2 activates physical alarm             │        │
-│   └────────────────────────────────────────────────────┘        │
-│                                                                 │
-│   ┌────────────────────────────────────────────────────┐        │
-│   │    MILESTONE 3 — Dual-Mode WiFi Failover           │        │
-│   │                                                    │        │
-│   │   AT+CWJAP? → WiFi connected?                      │        │
-│   │     YES → use cloud API prediction (CLOUD mode)    │        │
-│   │     NO  → use local Q-table (LOCAL mode)           │        │
-│   │   Serial: [CLOUD] or [LOCAL] each cycle            │        │
-│   └────────────────────────────────────────────────────┘        │
-│                                                                 │
-│   ┌────────────────────────────────────────────────────┐        │
-│   │    MILESTONE 4 — Command Parser (bidirectional)    │        │
-│   │                                                    │        │
-│   │   Parse command field in API response JSON         │        │
-│   │   "arm"    → enable PTA2 alarm output              │        │
-│   │   "disarm" → disable PTA2 alarm output             │        │
-│   │   "status" → dump all sensor values over serial    │        │
-│   └────────────────────────────────────────────────────┘        │
-│                                                                 │
-│   ┌────────────────────────────────────────────────────┐        │
-│   │    MILESTONE 5 — Sensor Calibration (SW2 + SD)     │        │
-│   │                                                    │        │
-│   │   Hold SW2 3s → enter calibration mode (LED blink) │        │
-│   │   60s window → collect min/max/mean/std per sensor │        │
-│   │   Write calibration.csv to microSD via SPI         │        │
-│   │   On boot → read calibration.csv → normalize RL   │        │
-│   │   input features before Q-value lookup             │        │
-│   └────────────────────────────────────────────────────┘        │
+│   Used by: M3 cloud mode + Mirac's M2 (HTTP POST)              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## How One Sensor Reading Flows Through the Whole System
+## Rajini's Milestones — K64F Firmware Flow
 
 ```
-Step 1 — K64F reads sensors (every 2.5 seconds)
-         PM2.5=709, PM10=812, Temp=27.5, MQ=0.439V ...
-         (normalized using calibration.csv if available — M5)
+Every 2.5 seconds on K64F:
 
-Step 2 — Check WiFi mode (M3)
-         AT+CWJAP? → connected?
-           YES → go to Step 3 (CLOUD mode)
-           NO  → go to Step 4b (LOCAL mode)
+Step 1 — Read raw sensors
+         PMS5003 → PM1.0, PM2.5, PM10
+         BME680  → temp, humidity, pressure, gas_resistance
+         MQ      → mq_analog, mq_digital
 
-Step 3 — K64F sends to Render.com via ESP32 AT+CIPSEND (M1)
-         POST https://ember-ai-ews2.onrender.com/predict
-         Body: { "PM2.5": 709, "PM10": 812, ... }
+Step 2 — Compute 16 RL features (M1 + M2 + M3 + M4)
+         delta_pm25 = PM2.5[now] - PM2.5[prev]
+         delta_pm10 = PM10[now]  - PM10[prev]
+         thi        = temp + 0.33×humidity - 4.0  (temp-humidity index)
+         gas_ratio  = mq_analog / log10(gas_resistance)
+         aqi_cat    = AQI category (0–5)
+         + apply calibration.csv normalization (M5)
 
-Step 4a — Cloud: AI model decides (best_model.zip)
-          16 features → neural network → ALARM ON
-          Response: { "alarm": "ON", "aqi": 500, "command": null }
+Step 3 — M1: Log features + label to training_data.csv on SD
+         SW2 pressed → label=1 (DANGER), LED red
+         SW3 pressed → label=0 (SAFE),   LED green
 
-Step 4b — Local: Q-table lookup (ember_rl_policy.h) (M2)
-          16 features → Q-value table → ALARM ON (no network)
+Step 4 — M2/M3: Decide alarm
+         AT+CWJAP? → WiFi connected?
+           YES → HTTP POST to API → use cloud prediction  [CLOUD]
+           NO  → Q-table lookup in flash                  [LOCAL]
 
-Step 5 — K64F parses response (M1 + M4)
-         Extract alarm → drive PTA2 GPIO
-         Extract command → execute arm/disarm/status (M4)
-         Serial: [CLOUD] alarm=ON  AQI=500  cmd=none
+Step 5 — Drive PTA2 GPIO based on alarm decision
 
-Step 6 — Server stores result in database (M1)
-         Saves: timestamp, PM2.5, alarm=ON, AQI=500
-
-Step 7a — Dashboard (M1) polls /history every 2.5s
-          Chart.js updates → alarm indicator turns RED
-
-Step 7b — Digital Twin (M4) polls /history
-          Virtual PM2.5 gauge → 709
-          Virtual alarm indicator → flashing RED
-          User toggles disarm → POST /arm → K64F picks up next cycle
+Step 6 — M4: If alarm ON → log event to alert_log.csv on SD
+         Serial "REPLAY" → print last 10 events
+         Serial "STATS"  → summary statistics
 ```
 
 ---
@@ -142,33 +104,27 @@ Step 7b — Digital Twin (M4) polls /history
 │  MIRAC                          │  RAJINI                       │
 │─────────────────────────────────│───────────────────────────────│
 │  FRDM-K64F hardware             │  AI model (DQN training)      │
-│  PMS5003 sensor                 │  REST API (Flask server)      │
-│  BME680 sensor                  │  Real-time dashboard (M1)     │
-│  MQ gas sensor                  │  K64F sensor pipeline (M1)    │
-│  ESP32 WiFi module              │  On-board RL in C (M2)        │
-│  SD card logging                │  Dual-mode WiFi failover (M3) │
-│  Physical alarm (LED/buzzer)    │  Digital twin + cmd parse (M4)│
-│  OLED display driver            │  SD calibration routine (M5)  │
-│  SoftAP WiFi provisioning       │  Render.com deployment        │
-│  Web control panel              │  GitHub repository            │
-│  Fire detection (M5)            │                               │
+│  PMS5003 sensor driver          │  Flask REST API + dashboard   │
+│  BME680 sensor driver           │  16-feature RL computation    │
+│  MQ gas sensor driver           │  Training data logger (M1)    │
+│  ESP32 HTTP POST to API         │  On-board RL in C (M2)        │
+│  OLED display driver            │  Dual-mode failover (M3)      │
+│  SoftAP WiFi provisioning       │  Alert history + replay (M4)  │
+│  Web control panel              │  Sensor calibration (M5)      │
+│  Raw sensor SD card logging     │  Render.com deployment        │
+│  Fire detection algorithm       │  GitHub repository            │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Without Real Hardware (Demo Mode)
+## SD Card Files (Rajini's firmware writes these)
 
 ```
-simulate_hardware.py
-(sends 7 fake readings)
-        │
-        │ HTTP POST (same format as real hardware)
-        ▼
-Render.com API → AI Model → Dashboard
-
-Everything works exactly the same.
-The only difference: data comes from the simulator instead of K64F.
+microSD card:
+├── training_data.csv   ← M1: 16 features + human label every 2.5s
+├── alert_log.csv       ← M4: full event log every time alarm triggers
+└── calibration.csv     ← M5: per-feature min/max/mean/std
 ```
 
 ---
@@ -176,9 +132,12 @@ The only difference: data comes from the simulator instead of K64F.
 ## Milestone Progress
 
 ```
-Milestone 1 — K64F Pipeline + Dashboard          ✅ DONE  (demo Mar 12)
-Milestone 2 — On-Board RL Inference in C         ⬜ TODO  (demo Mar 17)
-Milestone 3 — Dual-Mode Cloud/Local Failover     ⬜ TODO  (demo Mar 19)
-Milestone 4 — Digital Twin + Bidir Cmd Parse     ⬜ TODO  (demo Mar 24)
-Milestone 5 — Embedded Sensor Calibration        ⬜ TODO  (demo Mar 26)
+Milestone 1 — RL Training Data Logger + Labels      ⬜ TODO  (demo Mar 12)
+Milestone 2 — On-Board RL Inference in C            ⬜ TODO  (demo Mar 17)
+Milestone 3 — Dual-Mode Cloud/Local Failover        ⬜ TODO  (demo Mar 19)
+Milestone 4 — Alert History + Event Replay          ⬜ TODO  (demo Mar 24)
+Milestone 5 — Embedded Sensor Calibration           ⬜ TODO  (demo Mar 26)
+
+Supporting infrastructure (already deployed):
+Flask API + Chart.js Dashboard                      ✅ DONE  (Render.com)
 ```

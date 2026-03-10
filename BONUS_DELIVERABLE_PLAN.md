@@ -11,42 +11,46 @@
 The Ember Air Quality Monitoring System uses an NXP FRDM-K64F microcontroller
 with multiple sensors (PMS5003, BME680, MQ gas sensor) to monitor indoor air
 quality. A trained Reinforcement Learning (DQN) agent makes adaptive alarm
-decisions. All five bonus milestones involve FRDM-K64F firmware: sensor-to-cloud
-pipeline, on-board RL inference in C, dual-mode cloud/local failover,
-bidirectional digital twin command parsing, and embedded sensor calibration.
+decisions. Rajini's five bonus milestones cover: RL training data logging on
+K64F, on-board RL inference in C, dual-mode cloud/local failover, embedded alert
+history with event replay, and embedded sensor calibration. All involve K64F
+firmware for AI/RL deployment, data pipelines, and sensor preprocessing.
+
+No overlap with Miraç's milestones (OLED driver, ESP32 HTTP, SoftAP, web
+control panel, fire detection).
 
 ---
 
-## Milestone 1 — K64F-to-Cloud Sensor Pipeline + Real-Time Web Dashboard [1%]
+## Milestone 1 — RL Training Data Logger with Ground-Truth Labeling on K64F [1%]
 **Demo:** March 12, 2–3 PM, Room A3058
 **Estimated effort:** 5 hours
-**Status: COMPLETED**
 
 ### Description
-Write K64F firmware that packages all sensor readings (PMS5003, BME680, MQ) into
-a JSON payload and transmits it to the Render.com Flask API via ESP32 AT+CIPSEND
-HTTP POST every 2.5 seconds. The K64F parses the API JSON response to extract
-the alarm decision and AQI estimate. On the server side, all predictions are
-logged to SQLite and displayed on a real-time web dashboard with Chart.js
-(PM2.5, AQI, MQ gas voltage charts updating every 2.5 seconds, alarm status
-indicator green=SAFE / red=DANGER). The embedded deliverable is the K64F
-firmware that constructs, transmits, and parses the HTTP exchange. Satisfies
-requirement (a): server connectivity with real-time graphical display.
+Implement firmware on the FRDM-K64F that computes and logs the full 16-feature
+RL state vector (not raw sensor values) to a dedicated `training_data.csv` on the
+microSD card via SPI every 2.5 seconds. The 16 features include: PM1.0, PM2.5,
+PM10, temperature, humidity, pressure, gas resistance, MQ analog, MQ digital,
+TVOC, eCO2, AQI category, PM2.5 delta, PM10 delta, temp-humidity index, and
+gas ratio — all computed in real time from the raw sensor readings. Two buttons
+provide ground-truth labeling: press SW2 briefly to label current readings as
+DANGER (1), press SW3 to label as SAFE (0). Each CSV row includes a timestamp,
+all 16 features, and the human-assigned label. An RGB LED shows green during
+SAFE logging and red during DANGER logging. This creates real labeled hardware
+training data for retraining the RL model. This is distinct from Miraç's raw
+sensor CSV logging — this logs the processed feature vector with human labels.
 
 ### Deliverables
-- K64F firmware: constructs sensor JSON payload, sends via ESP32 AT+CIPSEND, parses response
-- `api/server.py` — Flask server with `POST /predict`, `GET /history`, `GET /status`, `GET /devices`
-- `api/database.py` — SQLite logging of all predictions
-- `api/templates/dashboard.html` — real-time Chart.js dashboard
-- Server live and accessible via public URL on Render.com
+- `k64f/ember_training_logger.h` — header: feature struct, function declarations
+- `k64f/ember_training_logger.c` — implementation: 16-feature computation, SD write, button labeling, RGB LED
+- `training_data.csv` format: `timestamp,pm1,pm2_5,pm10,temp,hum,pres,gas,mq_a,mq_d,tvoc,eco2,aqi_cat,delta_pm25,delta_pm10,thi,gas_ratio,label`
 
 ### Completion Criteria (Yes/No)
-- [x] K64F firmware constructs sensor JSON payload from live readings each cycle
-- [x] JSON transmitted to Render.com API via ESP32 AT+CIPSEND HTTP POST
-- [x] K64F parses API response and extracts alarm decision + AQI value
-- [x] Serial terminal shows: sent payload, HTTP status code, parsed response
-- [x] Dashboard loads with live-updating charts from K64F sensor data
-- [x] Alarm indicator changes colour when AI detects danger
+- [ ] K64F computes all 16 RL features from raw sensor readings each cycle
+- [ ] Features + timestamp written to training_data.csv on microSD via SPI
+- [ ] Press SW2 → current and subsequent readings labeled DANGER (LED turns red)
+- [ ] Press SW3 → current and subsequent readings labeled SAFE (LED turns green)
+- [ ] CSV contains: timestamp, 16 features, label column (0 or 1)
+- [ ] Serial terminal shows computed features and current label each cycle
 
 ---
 
@@ -67,8 +71,8 @@ state features, Q-values for both actions, and selected action. The physical
 alarm output (GPIO PTA2) activates based on the on-board decision.
 
 ### Deliverables
-- `ember_rl_policy.h` — Q-table exported from trained DQN model, compiled into K64F flash
-- K64F firmware: 16-feature state vector construction and Q-value lookup loop
+- `k64f/ember_rl_policy.h` — Q-table exported from trained DQN model, compiled into K64F flash
+- `k64f/ember_rl_inference.h/.c` — 16-feature state vector construction and Q-value lookup
 - GPIO PTA2 output driven by on-board RL decision
 
 ### Completion Criteria (Yes/No)
@@ -98,9 +102,8 @@ on the serial terminal shows CLOUD or LOCAL for each decision cycle. When WiFi
 reconnects, the system automatically switches back to cloud mode.
 
 ### Deliverables
-- K64F firmware: dual-mode state machine with AT+CWJAP? WiFi status polling
+- `k64f/ember_dual_mode.h/.c` — dual-mode state machine with AT+CWJAP? WiFi polling
 - Automatic fallback to `ember_rl_policy.h` on WiFi loss or API timeout
-- Auto-recovery to cloud mode when WiFi reconnects
 - Serial terminal mode indicator: CLOUD or LOCAL each cycle
 
 ### Completion Criteria (Yes/No)
@@ -113,37 +116,35 @@ reconnects, the system automatically switches back to cloud mode.
 
 ---
 
-## Milestone 4 — Digital Twin with Bidirectional K64F Command Parsing [1%]
+## Milestone 4 — Embedded Alert History + Event Replay on K64F [1%]
 **Demo:** March 24, regular lab time
 **Estimated effort:** 5 hours
 
 ### Description
-Implement bidirectional communication on the K64F for digital twin
-synchronisation. The K64F firmware is extended to parse incoming commands from
-the API response JSON (arm/disarm alarm, request sensor dump, set alarm mode).
-When the API response includes a command field, the K64F executes it immediately:
-"arm" enables the alarm output on PTA2, "disarm" disables it, "status" triggers
-a full sensor dump over serial. On the web side, a digital twin panel displays
-virtual gauges (PM2.5, temperature, humidity, MQ gas) and an alarm indicator
-that mirrors the physical K64F state. A virtual alarm toggle sends the
-arm/disarm command through the API, which the K64F picks up on the next polling
-cycle and executes. The embedded deliverable is the K64F command parser and
-executor. Satisfies requirement (c): digital twin with real-time synchronisation
-of state and behaviour.
+When the on-board RL agent (from Milestone 2) triggers an alarm, the K64F logs
+the full event to `alert_log.csv` on the microSD card via SPI. Each alert entry
+includes: timestamp, all 16 RL features at the moment of alarm, Q-values for
+both actions (ON and OFF), the selected action, and the inference mode (CLOUD or
+LOCAL from Milestone 3). The firmware also implements two serial commands for
+post-incident analysis: typing "REPLAY" reads back and prints the last 10 alert
+events from the SD card in a formatted table, and typing "STATS" computes and
+displays summary statistics — total alert count, average alert duration, most
+frequent time-of-day for alerts, and the sensor feature with the highest average
+value during alarm events (identifying the primary trigger). All processing
+happens on the K64F with no server dependency.
 
 ### Deliverables
-- K64F firmware: JSON command parser for "arm", "disarm", "status" fields in API response
-- GPIO PTA2 controlled by arm/disarm commands from web
-- `api/templates/digital_twin.html` — virtual gauges + alarm toggle panel
-- New `POST /arm` endpoint — receives arm/disarm from dashboard, queues command for K64F
+- `k64f/ember_alert_log.h/.c` — SD card alert logging on alarm trigger
+- Serial command "REPLAY" → prints last 10 alert events
+- Serial command "STATS" → summary statistics (count, duration, peak time, primary trigger)
 
 ### Completion Criteria (Yes/No)
-- [ ] K64F parses command field from API JSON response each cycle
-- [ ] "arm" command from web → K64F enables physical alarm on PTA2
-- [ ] "disarm" command from web → K64F disables physical alarm
-- [ ] Serial terminal confirms receipt and execution of each command
-- [ ] Virtual gauges on web dashboard match physical sensor readings within 5 seconds
-- [ ] Virtual alarm toggle → K64F alarm responds within one polling cycle
+- [ ] RL alarm event triggers full log entry to alert_log.csv on microSD via SPI
+- [ ] Each entry contains: timestamp, 16 features, Q-values, action, mode
+- [ ] Serial command "REPLAY" prints last 10 alert events from SD card
+- [ ] Serial command "STATS" computes and displays alert summary statistics
+- [ ] Stats include: total count, avg duration, peak time, primary trigger feature
+- [ ] All processing runs on K64F — no server or network required
 
 ---
 
@@ -168,7 +169,7 @@ progress, computed parameters, and confirmation of SD card write. An RGB LED
 blinks during calibration and turns solid green when complete.
 
 ### Deliverables
-- K64F firmware: SW2 long-press detection, calibration state machine
+- `k64f/ember_calibration.h/.c` — SW2 long-press detection, calibration state machine
 - Per-feature min/max/mean/std computation from 24-cycle baseline window
 - SD card write/read of `calibration.csv` via SPI
 - Normalization applied to RL state vector on every subsequent boot
@@ -187,10 +188,25 @@ blinks during calibration and turns solid green when complete.
 
 | Requirement | Milestone |
 |---|---|
-| (a) Server + graphical real-time display | Milestone 1: K64F sends data to API + live dashboard |
-| (b) AI causes action on external device | Milestone 2: On-board RL drives alarm GPIO (PTA2) |
-| | Milestone 3: Dual-mode RL drives alarm in both cloud and local modes |
-| (c) Digital twin with real-time sync | Milestone 4: Bidirectional K64F command parsing + web twin |
+| (a) Server + graphical real-time display | Milestone 3: cloud mode sends data to API + live dashboard |
+| (b) AI causes action on external device | Milestone 2: on-board RL drives alarm GPIO (PTA2) |
+| | Milestone 3: dual-mode RL drives alarm in both cloud and local modes |
+| (c) Digital twin with real-time sync | Covered by Miraç's Milestone 4 (web control panel) + Milestone 3 cloud mode provides live state to dashboard |
+
+---
+
+## Overlap Check with Miraç
+
+| Miraç owns | Rajini owns |
+|---|---|
+| OLED display driver | RL feature computation (16-feature vector) |
+| ESP32 AT/HTTP sending | On-board RL inference in C |
+| SoftAP WiFi provisioning | Dual-mode cloud/local failover |
+| Web control panel + K64F config | Training data logger with human labels |
+| Fire detection algorithm | Alert history + event replay |
+| Raw sensor CSV logging | Sensor calibration routine |
+
+**No overlap.** Miraç handles hardware drivers and connectivity. Rajini handles AI/RL deployment, data pipelines, and sensor preprocessing.
 
 ---
 
@@ -198,9 +214,9 @@ blinks during calibration and turns solid green when complete.
 
 | Milestone | Description | Demo Date | Hours |
 |---|---|---|---|
-| 1 | K64F-to-Cloud Sensor Pipeline + Dashboard | Mar 12 | 5 hrs |
+| 1 | RL Training Data Logger with Ground-Truth Labeling | Mar 12 | 5 hrs |
 | 2 | Port RL Inference to C on K64F | Mar 17 | 5 hrs |
-| 3 | Dual-Mode RL — Cloud + Local Failover | Mar 19 | 5 hrs |
-| 4 | Digital Twin with Bidirectional K64F Command Parsing | Mar 24 | 5 hrs |
+| 3 | Dual-Mode Cloud + Local RL Failover | Mar 19 | 5 hrs |
+| 4 | Embedded Alert History + Event Replay | Mar 24 | 5 hrs |
 | 5 | Embedded Sensor Calibration with SD Card | Mar 26 | 5 hrs |
 | **Total** | | | **25 hrs** |
