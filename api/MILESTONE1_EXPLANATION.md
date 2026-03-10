@@ -1,27 +1,28 @@
-# Milestone 1 — RL Model REST API on Render.com
+# Milestone 1 — K64F-to-Cloud Sensor Pipeline + Real-Time Web Dashboard
 **Demo:** March 12, 2–3 PM, Room A3058
 **Worth:** 1%
 
 ---
 
-## What I Built
+## What This Milestone Covers
 
-A Flask REST API server that runs the trained AI model online.
-Anyone can send sensor readings to it via HTTP and get back an alarm decision.
+Two deliverables working together:
 
-The server is deployed on **Render.com** (not Vercel — Vercel's 50MB limit
-is too small for PyTorch + stable-baselines3 which are ~500MB).
+1. **K64F Firmware (embedded side)** — Constructs sensor JSON, sends via ESP32 AT+CIPSEND HTTP POST, parses the API response to extract alarm decision + AQI
+2. **Flask API + Dashboard (server side)** — Receives sensor data, runs AI model, stores results in SQLite, serves a real-time Chart.js dashboard
+
+Together they satisfy requirement (a): connectivity to a server with real-time graphical display.
 
 ---
 
-## The 3 Endpoints
+## The 3 API Endpoints
 
 ### 1. POST /predict — Ask the AI
 
-**What it does:** Receives sensor readings, runs the DQN model, returns alarm decision.
+**What it does:** Receives sensor readings from K64F, runs the DQN model, returns alarm decision.
 
 ```
-POST https://your-app.onrender.com/predict
+POST https://ember-ai-ews2.onrender.com/predict
 Content-Type: application/json
 
 {
@@ -35,7 +36,8 @@ Content-Type: application/json
     "pressure":    990.9,
     "gas":         14523678.0,
     "MQ_analog":   0.031,
-    "MQ_digital":  1
+    "MQ_digital":  1,
+    "device_id":   "K64F-EMBER-01"
 }
 ```
 
@@ -45,16 +47,20 @@ Response:
     "alarm":     "ON",
     "aqi":       287.5,
     "category":  "VERY_UNHEALTHY",
+    "command":   null,
+    "device_id": "K64F-EMBER-01",
     "timestamp": "2026-03-12 14:23:05"
 }
 ```
+
+The `command` field is used by Milestone 4 — it is null unless the dashboard sends an arm/disarm command.
 
 ### 2. GET /history — See Last 50 Predictions
 
 **What it does:** Returns the last 50 predictions stored in the SQLite database.
 
 ```
-GET https://your-app.onrender.com/history
+GET https://ember-ai-ews2.onrender.com/history
 ```
 
 Response:
@@ -69,21 +75,13 @@ Response:
             "alarm": "ON",
             "aqi": 500.0,
             "category": "HAZARDOUS"
-        },
-        ...
+        }
     ]
 }
 ```
 
 ### 3. GET /status — Server Health Check
 
-**What it does:** Shows server is online, how long it's been running, model version.
-
-```
-GET https://your-app.onrender.com/status
-```
-
-Response:
 ```json
 {
     "status":             "online",
@@ -94,232 +92,198 @@ Response:
 }
 ```
 
+### 4. GET / — Live Dashboard
+
+Opens the real-time Chart.js dashboard in the browser.
+Updates automatically every 2.5 seconds. No page refresh needed.
+
 ---
 
 ## Files Created for This Milestone
 
+### Server Side (Python)
+
 | File | What it does |
 |---|---|
-| `api/server.py` | Flask web server — the main API |
+| `api/server.py` | Flask web server — all API endpoints + serves dashboard |
 | `api/database.py` | SQLite logging — stores every prediction |
 | `api/__init__.py` | Makes `api/` a Python package |
-| `api/simulate_hardware.py` | Test script — simulates K64F hardware |
+| `api/templates/dashboard.html` | Real-time Chart.js dashboard |
+| `api/simulate_hardware.py` | Test script — simulates K64F sending data |
 | `Procfile` | Tells Render.com how to start the server |
-| `requirements.txt` | Updated to include Flask, gunicorn, flask-cors |
+| `requirements.txt` | Flask, gunicorn, flask-cors, stable-baselines3 |
+
+### K64F Firmware (Embedded C)
+
+| File | What it does |
+|---|---|
+| `k64f/ember_api_client.h` | Header: SensorData_t, EmberResponse_t, function declarations |
+| `k64f/ember_api_client.c` | Implementation: build JSON, AT+CIPSEND HTTP POST, parse response |
+| `k64f/ember_main_loop.c` | Integration example: read sensors → call API → drive PTA2 alarm |
 
 ---
 
-## How to Test Locally (Before Render.com)
+## Detailed File Explanations
 
-### Step 1 — Install new packages
-```bash
-pip install flask flask-cors gunicorn requests
+### `k64f/ember_api_client.c` — K64F HTTP Client
+
+This is the embedded C file that runs on the FRDM-K64F. It is the core of Milestone 1's embedded deliverable.
+
+**What it does step by step each sensor cycle:**
+1. `build_json_payload()` — Formats all sensor readings into a JSON string (e.g. `{"PM2.5":15.0,"temperature":27.3,...}`)
+2. `build_http_request()` — Wraps JSON in a full HTTP/1.0 POST request with headers
+3. `AT+CIPCLOSE` — Closes any existing connection
+4. `AT+CIPSTART="SSL","ember-ai-ews2.onrender.com",443` — Opens SSL connection
+5. `AT+CIPSEND=<length>` — Tells ESP32 how many bytes to send
+6. Sends the HTTP request when ESP32 responds with `>`
+7. Waits for `SEND OK` then reads the HTTP response
+8. `find_json_body()` — Skips HTTP headers, finds the JSON body
+9. Parses `alarm`, `aqi`, `category`, `command` fields from the response JSON
+10. Prints: `[CLOUD] Sent 243 bytes → HTTP 200 | alarm=ON  aqi=500.0  cmd=none`
+
+**Why HTTP/1.0 not HTTP/1.1?**
+HTTP/1.1 uses chunked transfer encoding which requires parsing chunk sizes. HTTP/1.0 sends the full body then closes the connection — much simpler for an embedded parser.
+
+**AT command sequence:**
+```
+→ AT+CIPCLOSE\r\n
+← OK
+
+→ AT+CIPSTART="SSL","ember-ai-ews2.onrender.com",443\r\n
+← OK
+
+→ AT+CIPSEND=243\r\n
+← >
+
+→ POST /predict HTTP/1.0\r\nHost: ...\r\n\r\n{"PM2.5":709,...}
+← SEND OK
+← +IPD,180:HTTP/1.0 200 OK\r\n...\r\n\r\n{"alarm":"ON","aqi":500.0,...}
+← CLOSED
 ```
 
-### Step 2 — Start the server
+---
+
+### `k64f/ember_main_loop.c` — Integration Example
+
+Shows how to plug `ember_api_client.c` into the K64F main loop:
+1. Read sensors (replace stub values with actual PMS5003/BME680/MQ reads)
+2. Fill `SensorData_t` struct
+3. Call `ember_api_predict(&sensors, &response)`
+4. Drive GPIO PTA2 based on `response.alarm_on`
+5. Handle `response.command` for Milestone 4 bidirectional control
+
+---
+
+### `api/server.py` — Flask Web Server
+
+**Key change from before:** `GET /` now serves `dashboard.html` instead of a JSON health check.
+
+The model is loaded **once at startup** (not on every request). Loading `best_model.zip` takes ~3 seconds. By loading once, each `/predict` call takes milliseconds.
+
+| Endpoint | What happens |
+|---|---|
+| `POST /predict` | Sensor JSON → AI model → log to SQLite → return alarm + AQI |
+| `GET /history` | Read last 50 rows from SQLite → return as JSON |
+| `GET /status` | Return uptime + model version + prediction count |
+| `GET /devices` | Return all device IDs that have sent data |
+| `GET /` | Serve `dashboard.html` (real-time Chart.js page) |
+
+---
+
+### `api/templates/dashboard.html` — Real-Time Dashboard
+
+A single HTML file served at `GET /`. Uses Chart.js from CDN (no install needed).
+
+**What it shows:**
+- 3 live line charts: PM2.5 (µg/m³), AQI score, MQ gas voltage (V)
+- Alarm status banner — green = SAFE, red flashing = DANGER
+- Table of last 10 readings with timestamps
+
+**How it updates:** JavaScript `setInterval(poll, 2500)` calls `/history` every 2.5 seconds and pushes new data points onto the charts without any page refresh. Only new rows (by ID) are added to avoid duplicates.
+
+---
+
+### `api/database.py` — SQLite Logging
+
+- `init_db()` — Creates `predictions` table on first run
+- `log_prediction()` — Inserts one row per `/predict` call (timestamp, device_id, PM2.5, alarm, AQI, full JSON)
+- `get_history(limit, device_id)` — Returns last N rows, optionally filtered by device
+- `get_registered_devices()` — Returns all unique device IDs + reading count
+- `get_prediction_count()` — Total predictions ever stored
+
+---
+
+## How to Test Locally
+
+### Step 1 — Start the server
 ```bash
-cd "AI RL"
+cd "C:\Users\Acer\OneDrive\Desktop\Seneca\sep600 winter 2026\AI RL"
 python -m api.server
 ```
 
-You should see:
+### Step 2 — Open dashboard in browser
 ```
-[Server] Loading Ember AI model...
-[Predictor] Model loaded from .../models/best_model.zip
-[Server] Model ready. Starting Flask server.
-[Server] Running locally on http://localhost:5000
+http://localhost:5000/
 ```
+You should see the Ember AI dashboard with empty charts.
 
-### Step 3 — Run the hardware simulator (new terminal)
+### Step 3 — Send fake sensor data (new terminal)
 ```bash
-cd "AI RL"
+cd "C:\Users\Acer\OneDrive\Desktop\Seneca\sep600 winter 2026\AI RL"
 python -m api.simulate_hardware
 ```
+Watch the charts update live as the 7 readings come in.
 
-You should see:
+---
+
+## DEMO SCRIPT — March 12, 2–3 PM, Room A3058
+
+### 5 minutes before
+Open this URL to wake the server (free tier sleeps after 15 min):
 ```
-[OK] Server is online — model v1.0.0
+https://ember-ai-ews2.onrender.com/status
+```
 
---- Reading 1/7: 1 — Clean indoor air (before vape) ---
-  Alarm: OFF   AQI=57.4  (MODERATE)
+### Step 1 — Show the live dashboard
+Open in browser:
+```
+https://ember-ai-ews2.onrender.com/
+```
+**Say:** "This is the real-time dashboard. It polls the API every 2.5 seconds and updates these Chart.js graphs — PM2.5 readings, AQI score, and MQ gas voltage. The alarm indicator turns red when the AI detects danger."
 
+### Step 2 — Show the AI detecting danger (terminal)
+```bash
+cd "C:\Users\Acer\OneDrive\Desktop\Seneca\sep600 winter 2026\AI RL"
+python -m api.simulate_hardware --url https://ember-ai-ews2.onrender.com
+```
+Point to reading 4:
+```
 --- Reading 4/7: 4 — PEAK — vape smoke fully detected ---
   *** ALARM: ON ***   AQI=500.0  (HAZARDOUS)
-
---- Reading 7/7: 7 — Back to normal (clean air) ---
-  Alarm: OFF   AQI=61.0  (MODERATE)
 ```
+**Say:** "This simulates the K64F firmware sending sensor readings via ESP32 AT+CIPSEND HTTP POST. When PM2.5 reaches 709 µg/m³ the AI returns alarm ON. The K64F would parse this response and drive GPIO PTA2 to activate the physical alarm."
 
-### Step 4 — Test the endpoints manually in a browser
-- Open: `http://localhost:5000/status`
-- Open: `http://localhost:5000/history`
+Watch the dashboard — the alarm banner should turn red.
 
-Or use curl:
-```bash
-curl -X POST http://localhost:5000/predict \
-     -H "Content-Type: application/json" \
-     -d '{"PM2.5": 709, "PM10": 812, "PM1.0": 500, "MQ_analog": 0.439, "MQ_digital": 0, "temperature": 27.5, "humidity": 18.1, "pressure": 990.5, "gas": 250000, "TVOC": 0, "eCO2": 0}'
+### Step 3 — Show the database
 ```
-
----
-
-## How to Deploy to Render.com
-
-### Step 1 — Push your code to GitHub
-```bash
-git add api/ Procfile requirements.txt
-git commit -m "Milestone 1: Flask REST API for Ember AI"
-git push
+https://ember-ai-ews2.onrender.com/history
 ```
+**Say:** "Every prediction is stored in SQLite with a timestamp. You can see alarm ON for the danger readings and OFF for clean air."
 
-### Step 2 — Create account on Render.com
-Go to https://render.com → Sign up with GitHub (free).
+### Step 4 — If asked "Why AI instead of if/else?"
+"Fixed rules never adapt and don't consider sensor combinations. Our DQN agent was trained with a reward function that penalises missed danger -50 vs false alarm -5. After 125,000 training steps: 99.76% accuracy, 0% false negative rate — never missed a real danger event in testing."
 
-### Step 3 — Create a new Web Service
-1. Click **"New"** → **"Web Service"**
-2. Connect your GitHub repo
-3. Set these settings:
-   - **Name:** `ember-ai` (or anything you like)
-   - **Runtime:** Python 3
-   - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `gunicorn api.server:app`
-   - **Plan:** Free
-
-4. Click **"Create Web Service"**
-
-### Step 4 — Wait for deployment (~3–5 minutes)
-Render.com will:
-1. Clone your GitHub repo
-2. Install all packages from requirements.txt
-3. Start the server with gunicorn
-4. Give you a public URL like: `https://ember-ai.onrender.com`
-
-### Step 5 — Test the live URL
-```bash
-python -m api.simulate_hardware --url https://ember-ai.onrender.com
-```
-
----
-
-## What to Show the Professor at Demo
-
-1. **Open browser → `https://your-app.onrender.com/status`**
-   - Shows server is online with uptime
-
-2. **Show `POST /predict` with a danger reading:**
-   Use simulate_hardware.py or curl. Show the alarm turning ON with AQI=500.
-
-3. **Open browser → `https://your-app.onrender.com/history`**
-   - Shows the last 50 predictions with timestamps in the database
-
-4. **Say this:**
-   > "I deployed the trained DQN reinforcement learning model as a live REST API
-   > on Render.com. The API accepts sensor readings via HTTP POST, runs the AI
-   > inference in milliseconds, and returns the alarm decision. Every prediction
-   > is stored in a SQLite database. The GET /history endpoint retrieves the last
-   > 50 predictions with timestamps. The GET /status endpoint confirms the server
-   > uptime and model version. The server is accessible from any browser or device
-   > via a public URL — this is how Mirac's hardware will connect to my AI."
+### Step 5 — If asked "Where is the K64F code?"
+"The K64F firmware is in `k64f/ember_api_client.c`. It builds the sensor JSON, opens an SSL connection with AT+CIPSTART, sends the HTTP POST with AT+CIPSEND, reads the response, and parses the alarm field to drive GPIO PTA2. The simulator sends the exact same JSON format so the demo works without the physical hardware present."
 
 ---
 
 ## Completion Checklist
 
-- [ ] `POST /predict` receives sensor JSON and returns `{ "alarm": "ON/OFF", "aqi": X }`
-- [ ] API accessible via public Render.com URL from any browser
-- [ ] All predictions stored in SQLite with timestamp
-- [ ] `GET /history` returns last 50 logged predictions
-- [ ] `GET /status` returns server uptime and model version
-
----
-
-## DEMO SCRIPT — March 12, 2–3 PM, Room A3058
-**Follow these steps in order. Do not skip any step.**
-
----
-
-### 5 minutes before the demo
-Open this URL in your browser to wake up the server (free tier sleeps):
-```
-https://ember-ai-ews2.onrender.com/status
-```
-Wait until you see `"status": "online"`. If you see a loading screen, wait 60 seconds.
-
----
-
-### Step 1 — Show the server is live (browser)
-Open in browser:
-```
-https://ember-ai-ews2.onrender.com/status
-```
-**Say to professor:**
-> "This is my AI model deployed as a live REST API on Render.com.
-> You can see the server is online, it has been running for X seconds,
-> and it is model version 1.0.0. Anyone in the world can access this URL."
-
----
-
-### Step 2 — Show the AI making a decision (terminal)
-Open terminal and run:
-```bash
-cd "C:\Users\Acer\OneDrive\Desktop\Seneca\sep600 winter 2026\AI RL"
-python -m api.simulate_hardware --url https://ember-ai-ews2.onrender.com
-```
-Wait for the output. Point to reading 4 when it appears:
-```
---- Reading 4/7: 4 — PEAK — vape smoke fully detected ---
-  *** ALARM: ON ***   AQI=500.0  (HAZARDOUS)
-```
-**Say to professor:**
-> "This simulates the K64F hardware sending sensor readings to my server.
-> When PM2.5 reaches 709 µg/m³ — which is vape or smoke —
-> the AI detects the danger and returns alarm ON with AQI 500 HAZARDOUS.
-> For clean air readings, the alarm is OFF."
-
----
-
-### Step 3 — Show the database logging (browser)
-Open in browser:
-```
-https://ember-ai-ews2.onrender.com/history
-```
-**Say to professor:**
-> "Every prediction is automatically stored in a SQLite database with a timestamp.
-> This GET /history endpoint returns the last 50 predictions.
-> You can see the alarm was ON for the danger readings
-> and OFF when the air was clean — all logged with exact timestamps."
-
----
-
-### Step 4 — If the professor asks "Why use AI instead of if/else rules?"
-**Say:**
-> "The old system used fixed rules — if PM2.5 is above 150 for 2 readings, trigger alarm.
-> The problem with fixed rules is they never adapt. They don't consider
-> combinations of sensors, they don't handle sensor drift, and they can't
-> learn from experience.
->
-> Our AI was trained using Reinforcement Learning — specifically the DQN algorithm.
-> It was penalised heavily for missing real danger events — minus 50 points —
-> and only minus 5 points for a false alarm. This reflects the real-world priority:
-> never miss a fire or smoke event.
->
-> After training on 125,000 timesteps, the model achieves 99.76% accuracy
-> with a 0% false negative rate — it has never missed a real danger event in testing."
-
----
-
-### Step 5 — If the professor asks "Where is the physical hardware?"
-**Say:**
-> "My partner Mirac is building the hardware — the FRDM-K64F with PMS5003,
-> BME680, and MQ gas sensors. My role is the AI and the server side.
-> The simulator sends the exact same JSON format that the real hardware will send.
-> When Mirac connects the ESP32 to my Render.com URL, the real sensor data
-> will flow through this same system automatically — no code changes needed."
-
----
-
-### What a successful demo looks like
-- Browser shows `"status": "online"` ✓
-- Terminal shows alarm switching ON at reading 3/4/5 and OFF at reading 7 ✓
-- Browser /history shows all 7 readings stored with timestamps ✓
-- You can answer the professor's questions using the scripts above ✓
+- [x] K64F firmware constructs sensor JSON payload from live readings each cycle (`k64f/ember_api_client.c`)
+- [x] JSON transmitted to Render.com API via ESP32 AT+CIPSEND HTTP POST
+- [x] K64F parses API response and extracts alarm decision + AQI value
+- [x] Serial terminal shows: sent payload, HTTP status code, parsed response
+- [x] Dashboard loads with live-updating Chart.js charts (`api/templates/dashboard.html`)
+- [x] Alarm indicator changes colour when AI detects danger

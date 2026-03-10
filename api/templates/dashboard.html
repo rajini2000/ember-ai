@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ember AI — Live Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0f1117;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        /* ── Alarm banner ── */
+        #alarm-banner {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            background: #1a2a1a;
+            border: 1px solid #2a4a2a;
+            transition: all 0.3s;
+        }
+
+        #alarm-banner.danger {
+            background: #2a0a0a;
+            border-color: #ff3333;
+            animation: pulse-border 1s infinite;
+        }
+
+        @keyframes pulse-border {
+            0%, 100% { border-color: #ff3333; }
+            50%       { border-color: #ff8888; }
+        }
+
+        #alarm-dot {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #22cc44;
+            flex-shrink: 0;
+        }
+
+        #alarm-dot.danger {
+            background: #ff3333;
+            animation: blink 0.6s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.2; }
+        }
+
+        #alarm-text {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        #alarm-aqi {
+            margin-left: auto;
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+
+        /* ── Charts ── */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .charts-grid { grid-template-columns: 1fr; }
+        }
+
+        .chart-card {
+            background: #161b22;
+            border: 1px solid #2a2a3a;
+            border-radius: 8px;
+            padding: 14px;
+        }
+
+        .chart-card h3 {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+        }
+
+        .chart-card canvas {
+            max-height: 160px;
+        }
+
+        /* ── Table ── */
+        .table-card {
+            background: #161b22;
+            border: 1px solid #2a2a3a;
+            border-radius: 8px;
+            padding: 14px;
+            overflow-x: auto;
+        }
+
+        .table-card h3 {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+        }
+
+        th {
+            color: #666;
+            text-align: left;
+            padding: 4px 8px;
+            border-bottom: 1px solid #2a2a3a;
+        }
+
+        td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #1e1e2e;
+        }
+
+        tr:last-child td { border-bottom: none; }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.7rem;
+        }
+
+        .badge-on  { background: #3a0a0a; color: #ff6666; }
+        .badge-off { background: #0a2a0a; color: #44cc66; }
+
+        /* ── Footer ── */
+        #footer {
+            margin-top: 16px;
+            font-size: 0.72rem;
+            color: #444;
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Ember AI — Air Quality Monitor</h1>
+<p class="subtitle">Live dashboard · updates every 2.5 seconds</p>
+
+<!-- Alarm status banner -->
+<div id="alarm-banner">
+    <div id="alarm-dot"></div>
+    <span id="alarm-text">AIR QUALITY: SAFE</span>
+    <span id="alarm-aqi">AQI — · —</span>
+</div>
+
+<!-- Charts -->
+<div class="charts-grid">
+    <div class="chart-card">
+        <h3>PM2.5 (µg/m³)</h3>
+        <canvas id="chartPM25"></canvas>
+    </div>
+    <div class="chart-card">
+        <h3>AQI Score</h3>
+        <canvas id="chartAQI"></canvas>
+    </div>
+    <div class="chart-card">
+        <h3>MQ Gas Voltage (V)</h3>
+        <canvas id="chartMQ"></canvas>
+    </div>
+</div>
+
+<!-- Recent readings table -->
+<div class="table-card">
+    <h3>Recent Readings (last 10)</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>PM2.5</th>
+                <th>AQI</th>
+                <th>MQ (V)</th>
+                <th>Temp (°C)</th>
+                <th>Humidity (%)</th>
+                <th>Alarm</th>
+                <th>Category</th>
+            </tr>
+        </thead>
+        <tbody id="table-body">
+            <tr><td colspan="8" style="color:#555;text-align:center">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div id="footer">
+    <span id="last-update">Last update: —</span>
+    <span>Ember AI v1.0.0 · Render.com</span>
+</div>
+
+<script>
+// ── Chart setup ──────────────────────────────────────────────
+const MAX_POINTS = 60;
+
+function makeChart(id, label, colour) {
+    const ctx = document.getElementById(id).getContext('2d');
+    return new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: label,
+                data: [],
+                borderColor: colour,
+                backgroundColor: colour + '22',
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: true,
+                tension: 0.3,
+            }]
+        },
+        options: {
+            animation: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: {
+                    display: false,
+                },
+                y: {
+                    grid:   { color: '#2a2a3a' },
+                    ticks:  { color: '#666', font: { size: 10 } },
+                }
+            }
+        }
+    });
+}
+
+const chartPM25 = makeChart('chartPM25', 'PM2.5', '#58a6ff');
+const chartAQI  = makeChart('chartAQI',  'AQI',   '#ff7b72');
+const chartMQ   = makeChart('chartMQ',   'MQ (V)', '#3fb950');
+
+function pushPoint(chart, label, value) {
+    chart.data.labels.push(label);
+    chart.data.datasets[0].data.push(value);
+    if (chart.data.labels.length > MAX_POINTS) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+    }
+    chart.update('none');
+}
+
+// ── Alarm banner ─────────────────────────────────────────────
+function setAlarm(isOn, aqi, category) {
+    const banner = document.getElementById('alarm-banner');
+    const dot    = document.getElementById('alarm-dot');
+    const text   = document.getElementById('alarm-text');
+    const aqiEl  = document.getElementById('alarm-aqi');
+
+    if (isOn) {
+        banner.classList.add('danger');
+        dot.classList.add('danger');
+        text.textContent = 'DANGER DETECTED — ALARM ON';
+        text.style.color = '#ff6666';
+    } else {
+        banner.classList.remove('danger');
+        dot.classList.remove('danger');
+        text.textContent = 'AIR QUALITY: SAFE';
+        text.style.color = '#44cc66';
+    }
+    aqiEl.textContent = aqi != null ? `AQI ${aqi.toFixed(1)} · ${category || ''}` : 'AQI — · —';
+}
+
+// ── Table ─────────────────────────────────────────────────────
+function updateTable(rows) {
+    const tbody = document.getElementById('table-body');
+    if (!rows || rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="color:#555;text-align:center">No data yet</td></tr>';
+        return;
+    }
+    const slice = rows.slice(0, 10);
+    tbody.innerHTML = slice.map(r => {
+        const isOn  = r.alarm === 'ON';
+        const badge = isOn
+            ? '<span class="badge badge-on">ON</span>'
+            : '<span class="badge badge-off">OFF</span>';
+        const time  = r.timestamp ? r.timestamp.slice(11, 19) : '—';
+        return `<tr>
+            <td>${time}</td>
+            <td>${r.pm25 != null ? r.pm25.toFixed(1) : '—'}</td>
+            <td>${r.aqi  != null ? r.aqi.toFixed(1)  : '—'}</td>
+            <td>${r.mq_analog != null ? r.mq_analog.toFixed(3) : '—'}</td>
+            <td>${r.temperature != null ? r.temperature.toFixed(1) : '—'}</td>
+            <td>${r.humidity != null ? r.humidity.toFixed(1) : '—'}</td>
+            <td>${badge}</td>
+            <td style="color:#888;font-size:0.72rem">${r.category || '—'}</td>
+        </tr>`;
+    }).join('');
+}
+
+// ── Polling ───────────────────────────────────────────────────
+let lastId = null;
+
+async function poll() {
+    try {
+        const res  = await fetch('/history');
+        const data = await res.json();
+        const rows = data.predictions || [];
+
+        if (rows.length === 0) return;
+
+        // Push only NEW points to charts (avoid duplicates)
+        const newRows = lastId == null
+            ? rows.slice(0, 60).reverse()
+            : rows.filter(r => r.id > lastId).reverse();
+
+        for (const r of newRows) {
+            const label = r.timestamp ? r.timestamp.slice(11, 19) : '';
+            pushPoint(chartPM25, label, r.pm25  ?? 0);
+            pushPoint(chartAQI,  label, r.aqi   ?? 0);
+            pushPoint(chartMQ,   label, r.mq_analog ?? 0);
+        }
+
+        if (rows.length > 0) lastId = rows[0].id;
+
+        // Update alarm from latest row
+        const latest = rows[0];
+        setAlarm(latest.alarm === 'ON', latest.aqi, latest.category);
+
+        updateTable(rows);
+        document.getElementById('last-update').textContent =
+            'Last update: ' + new Date().toLocaleTimeString();
+
+    } catch (e) {
+        document.getElementById('last-update').textContent =
+            'Last update: error — ' + e.message;
+    }
+}
+
+// Start polling immediately, then every 2.5s
+poll();
+setInterval(poll, 2500);
+</script>
+
+</body>
+</html>

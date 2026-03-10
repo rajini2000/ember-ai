@@ -1,96 +1,164 @@
-Seneca Polytechnic
-School of Software Design & Data Science
-SEP600 – Course Project Bonus – Winter 2026
-Individual Deliverable Plan – Due Tuesday, Mar 10, 2026, 11:59 on Blackboard.
-READ THIS: Academic Integrity Policy
-https://www.senecapolytechnic.ca/about/policies/academic-integrity-policy.html
-This includes but is not limited to the following:
-1. Everything you put into your report must be your own work and you must be able to explain
-how and why you put that into your report.
-2. All code that you write must be your own work and you must be able to explain how and why
-you put that into your code.
-See citation section for GenAI use policy
-This bonus potion of the project is designed to improve your grade as well as ensuring consistent
-progress for the course project. The bonus grade will be calculated into the same category as the midterm and exam grade. ie. It’ll count towards the requirement of getting a weight average of 50% of
-higher on the mid-term and exam to pass the course. The bonus grade is up to 5%.
-All bonus milestone demonstration will be graded base on completion. No part mark will be awarded.
-Instruction and Requirement:
-1. Any group member who want to participant in the bonus mark activities must submit an
-individual deliverable plan that clearly define all milestones deliverables that are tangible and
-measurable, ie. Can be observed or measured with a simple Yes/No for completion. The
-deliverables cannot be dependent or overlap with another group member’s deliverables.
-2. Each milestone deliverable must be equivalent to at least 4 hours of work and must be
-approved by the Professor. However, there are no restriction on the sequence in completing or
-presenting the deliverables. ie. You can spend 20 hours of work and complete them all over a
-weekend.
-3. Only one deliverable will be marked per demo day. Each demonstration will take around 5
-minutes on walking through the completion of your deliverable. No presentation slides or report
-is required.
-4. All milestone deliverables must be new work. All work or tasks completed before the milestone
-presentation cannot be used toward the bonus mark.
-5. Your milestones must lead to a course project that include all three of following requirement. No
-bonus will be awarded if your completed project does not have all of the following. Each
-milestone should show progressive integration of the requirements.
+SEP600 – Bonus Individual Deliverable Plan
+Name: Rajini Paranagamage
+Course: SEP600 – Embedded Systems
+Professor: Jacky Lau
+Due: March 10, 2026
+Project: Ember – Air Quality Monitoring System
 
-SEP600 – Course Project Bonus
+================================================================================
+MILESTONES
+================================================================================
 
-Page 1
+MILESTONE #1 [1%] — COMPLETED
+Demo: Mar 12, 2–3 PM, Room A3058 | 5 hrs
+--------------------------------------------------------------------------------
+K64F-to-Cloud Sensor Pipeline + Real-Time Web Dashboard
 
-a) Connectivity to a server for data-logging: Connect your device to an online or local server
-(not just to a text file) for data-logging. The server must also have a display to output the
-data in a graphical format in real-time.
-b) AI Interaction: Connect your device to an online or local pre-trained ML or AI model to
-perform analysis or for decision masking. The response from the model must cause an action
-on at least once external device (ie. moving a motor). You must be able to justify the use of
-ML or AI. ie. Why do you need to use ML or AI instead of using conditional statement?
-c) Digital-Twins: Connect your device to an online or local server with a graphical interface that
-is configured to act a digital twins. The digital twins should be a duplicate of the physical
-embedded devices with real-time synchronization on state and behaviour. ie. For a system
-composing of a button and a LED, you can press the physical button or the virtual button,
-and both the physical LED and the virtual LED should turn ON.
-6. No late submission of milestone deliverables will be considered. Only one milestone will be
-marked per demo day but the milestone does not have to be presented sequentially. ie. If you
-missed your deliverable for demo #1, you may demonstrate milestone #1 for mark during demo
-#2 but you cannot demonstrate both milestone #1 and #2 for 2 marks in the same demo.
-Each deliverable must be provided with as much details as possible. Lack of details and below the 4-hour
-scope such as “Connect the LED and make it work.” will result in not having your deliverable plan
-approved.
-Example of acceptable deliverables:
-•
+Write K64F firmware that packages all sensor readings (PMS5003, BME680, MQ) into
+a JSON payload and transmits it to the Render.com Flask API via ESP32 AT+CIPSEND
+HTTP POST every 2.5 seconds. The K64F parses the API JSON response to extract
+the alarm decision and AQI estimate. On the server side, all predictions are
+logged to SQLite and displayed on a real-time web dashboard with Chart.js
+(PM2.5, AQI, MQ gas voltage charts updating every 2.5 seconds, alarm status
+indicator green=SAFE / red=DANGER). The embedded deliverable is the K64F
+firmware that constructs, transmits, and parses the HTTP exchange. Satisfies
+requirement (a): server connectivity with real-time graphical display.
 
-Sensor integration: Demonstration of integrating the MPU6050 sensor over I2C into my project
-setup and displaying it’s reading in gravity unit “g” (2 hours) and integrating the MQ-2 gas sensor
-and displaying it’s reading in “ppm” (2 hours) on the serial terminal.
+COMPLETION CRITERIA (YES/NO):
+✓ K64F firmware constructs sensor JSON payload from live readings each cycle
+✓ JSON transmitted to Render.com API via ESP32 AT+CIPSEND HTTP POST
+✓ K64F parses API response and extracts alarm decision + AQI value
+✓ Serial terminal shows: sent payload, HTTP status code, parsed response
+✓ Dashboard loads with live-updating charts from K64F sensor data
+✓ Alarm indicator changes colour when AI detects danger
 
-•
 
-IoT Connection: Demonstration of connecting my project to a server using a ESP32 module,
-sending data to the server, and displaying the logged data on the server through a browser.
+MILESTONE #2 [1%]
+Demo: Mar 17, Regular Lab Time | 5 hrs
+--------------------------------------------------------------------------------
+Port RL Inference to C on FRDM-K64F — On-Board AI Decision Making
 
-SEP600 – Course Project Bonus
+Port the trained DQN agent onto the FRDM-K64F microcontroller by implementing
+the RL inference engine in embedded C. The Q-table from ember_rl_policy.h is
+loaded into flash memory. Each sensor cycle (every 2.5 seconds), the K64F
+collects readings from all sensors (PMS5003, BME680, MQ), constructs the
+16-feature state vector in memory, performs Q-value lookup from the flash-stored
+policy table, and selects the action (ALARM ON or OFF) with the highest Q-value.
+The alarm decision is made entirely on-board with zero network dependency. The
+result is displayed on the serial terminal showing: raw sensor values, computed
+state features, Q-values for both actions, and selected action. The physical
+alarm output (GPIO PTA2) activates based on the on-board decision.
 
-Page 2
+COMPLETION CRITERIA (YES/NO):
+✓ ember_rl_policy.h compiled and loaded into K64F flash memory
+✓ K64F reads all sensors and constructs 16-feature state vector each cycle
+✓ Q-value lookup performed from flash-stored policy table on-board
+✓ Alarm decision made locally without any network call
+✓ Serial terminal displays: sensor values, state features, Q-values, action
+✓ Physical alarm on PTA2 activates/deactivates based on on-board RL decision
 
-Individual Deliverable Plan (to be completed by each member who want participant in the bonus mark
-activities). Use this table or create your own.
-Deliverable
-Bonus Milestone #1 [1%]
-Demo: Mar 12 between 2PM-3PM in room A3058
 
-Bonus Milestone #2 [1%]
-Demo: Mar 17 during regular lab-time
+MILESTONE #3 [1%]
+Demo: Mar 19, 2–3 PM, Room A3058 | 5 hrs
+--------------------------------------------------------------------------------
+Dual-Mode RL — Cloud API + Local Fallback with Automatic WiFi Failover
 
-Bonus Milestone #3 [1%]
-Demo: Mar 19 between 2PM-3PM in room A3058
+Implement a dual-mode inference system on the K64F that uses the cloud API
+(Render.com) when WiFi is available and automatically falls back to the on-board
+C policy (from Milestone #2) when WiFi is disconnected or the API is
+unreachable. The K64F monitors ESP32 WiFi connection status each cycle using
+AT+CWJAP? query. When connected, sensor data is sent to the cloud API via
+ESP32 HTTP POST and the cloud prediction is used. When WiFi drops or the API
+returns an error or times out (>3 seconds), the system seamlessly switches to
+local RL inference using the flash-stored Q-table with no interruption in alarm
+monitoring. A mode indicator on the serial terminal shows CLOUD or LOCAL for
+each decision cycle. When WiFi reconnects, the system automatically switches
+back to cloud mode.
 
-Bonus Milestone #4 [1%]
-Demo: Mar 24 during regular lab-time
+COMPLETION CRITERIA (YES/NO):
+✓ System uses cloud API prediction when WiFi is connected
+✓ Disconnect WiFi → system switches to local RL within one cycle (2.5s)
+✓ Alarm decisions continue without interruption during WiFi loss
+✓ Serial terminal shows mode indicator: CLOUD or LOCAL each cycle
+✓ Reconnect WiFi → system automatically returns to cloud mode
+✓ API timeout (>3 seconds) also triggers fallback to local mode
 
-Bonus Milestone #5 [1%]
-Demo: Mar 26 between 2PM-3PM in room A3058
 
-SEP600 – Course Project Bonus
+MILESTONE #4 [1%]
+Demo: Mar 24, Regular Lab Time | 5 hrs
+--------------------------------------------------------------------------------
+Digital Twin with Bidirectional K64F Command Parsing
 
-Page 3
+Implement bidirectional communication on the K64F for digital twin
+synchronisation. The K64F firmware is extended to parse incoming commands from
+the API response JSON (arm/disarm alarm, request sensor dump, set alarm mode).
+When the API response includes a command field, the K64F executes it immediately:
+"arm" enables the alarm output on PTA2, "disarm" disables it, "status" triggers
+a full sensor dump over serial. On the web side, a digital twin panel displays
+virtual gauges (PM2.5, temperature, humidity, MQ gas) and an alarm indicator
+that mirrors the physical K64F state. A virtual alarm toggle sends the
+arm/disarm command through the API, which the K64F picks up on the next polling
+cycle and executes. The embedded deliverable is the K64F command parser and
+executor. Satisfies requirement (c): digital twin with real-time synchronisation
+of state and behaviour.
 
-
+COMPLETION CRITERIA (YES/NO):
+✓ K64F parses command field from API JSON response each cycle
+✓ "arm" command from web → K64F enables physical alarm on PTA2
+✓ "disarm" command from web → K64F disables physical alarm
+✓ Serial terminal confirms receipt and execution of each command
+✓ Virtual gauges on web dashboard match physical sensor readings within 5 seconds
+✓ Virtual alarm toggle → K64F alarm responds within one polling cycle
+
+
+MILESTONE #5 [1%]
+Demo: Mar 26, 2–3 PM, Room A3058 | 5 hrs
+--------------------------------------------------------------------------------
+Embedded Sensor Calibration Routine on K64F with SD Card Storage
+
+Implement a sensor calibration mode on the FRDM-K64F triggered by holding the
+onboard button (SW2) for 3 seconds. When activated, the system enters
+calibration mode and collects baseline readings from all sensors (PMS5003 PM
+values, BME680 temperature/humidity/pressure/gas resistance, MQ analog/digital)
+over a configurable period (default: 60 seconds / 24 cycles at 2.5s intervals).
+The routine computes per-feature normalization parameters (min, max, mean,
+standard deviation) from the baseline samples. These parameters are written to
+a calibration file (calibration.csv) on the microSD card via SPI. On subsequent
+boots, the K64F reads calibration.csv from SD and uses the stored parameters to
+normalize raw sensor readings before constructing the 16-feature state vector
+for the RL agent. This improves RL accuracy by ensuring input features match
+the scale the model was trained on. Serial terminal displays calibration
+progress, computed parameters, and confirmation of SD card write. An RGB LED
+blinks during calibration and turns solid green when complete.
+
+COMPLETION CRITERIA (YES/NO):
+✓ Hold SW2 for 3 seconds → system enters calibration mode (LED blinks)
+✓ Baseline readings collected from all sensors over 60-second window
+✓ Min, max, mean, std computed for each sensor feature
+✓ Calibration parameters written to calibration.csv on microSD via SPI
+✓ On boot, K64F reads calibration.csv and applies normalization to RL input
+✓ Serial terminal shows calibration progress and computed parameters
+
+
+================================================================================
+REQUIREMENTS COVERAGE
+================================================================================
+
+(a) Server + real-time graphical display    → #1 K64F sends data to API + dashboard
+(b) AI causes action on external device     → #2 On-board RL drives alarm GPIO
+                                              #3 Dual-mode RL drives alarm in both modes
+(c) Digital twin with real-time sync        → #4 Bidirectional command parsing on K64F
+                                              + web twin with virtual controls
+
+================================================================================
+PROJECT CONTEXT
+================================================================================
+
+Rajini's milestones: K64F-to-cloud sensor pipeline, on-board RL inference in C,
+dual-mode cloud/local failover, bidirectional digital twin command parsing, and
+embedded sensor calibration routine. All milestones involve FRDM-K64F firmware.
+
+Miraç's milestones: OLED display driver, ESP32 API connectivity, SoftAP WiFi
+provisioning, web control panel with K64F config, and fire detection algorithm.
+
+No overlap between milestones. Total bonus hours: 25 hrs (5 × 5 hrs each)

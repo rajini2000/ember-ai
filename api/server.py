@@ -6,7 +6,8 @@ Endpoints:
   POST /predict  — accepts sensor JSON, returns alarm decision + AQI
   GET  /history  — returns last 50 predictions with timestamps
   GET  /status   — returns server uptime and model version
-  GET  /         — health check (used by Render.com)
+  GET  /devices  — returns all connected device IDs
+  GET  /         — real-time Chart.js dashboard
 """
 
 import sys
@@ -14,7 +15,7 @@ import os
 import time
 from datetime import datetime, timezone
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 
 # ---------------------------------------------------------------------------
@@ -30,7 +31,7 @@ from api.database   import init_db, log_prediction, get_history, get_prediction_
 # ---------------------------------------------------------------------------
 # App setup
 # ---------------------------------------------------------------------------
-app        = Flask(__name__)
+app        = Flask(__name__, template_folder='templates')
 CORS(app)                       # allow requests from any browser / domain
 
 START_TIME = time.time()        # track when the server started
@@ -194,15 +195,11 @@ def devices():
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# GET / — health check (Render.com checks this on deploy)
+# GET / — real-time dashboard (HTML page with Chart.js)
 # ---------------------------------------------------------------------------
 @app.route('/', methods=['GET'])
-def health():
-    return jsonify({
-        'service': 'Ember AI REST API',
-        'status':  'online',
-        'version': MODEL_VERSION,
-    }), 200
+def dashboard():
+    return render_template('dashboard.html')
 
 
 # ---------------------------------------------------------------------------

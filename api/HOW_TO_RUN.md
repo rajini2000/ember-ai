@@ -117,3 +117,5 @@ For the demo, open the /status URL a minute before showing the professor.
 | `/status` | GET | Uptime + model version |
 | `/predict` | POST | Send sensor data → get alarm decision |
 | `/history` | GET | Last 50 predictions from database |
+| `/history?device_id=XX` | GET | Filter predictions by device |
+| `/devices` | GET | List all connected device IDs |
