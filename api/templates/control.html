@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ember — Control Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Variables ──────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#09090b;--card:#18181b;--card-hover:#1f1f23;
+  --border:#27272a;--border-hover:#3f3f46;
+  --text:#fafafa;--text-secondary:#a1a1aa;--text-muted:#71717a;
+  --accent:#f97316;--accent-glow:rgba(249,115,22,.25);
+  --green:#22c55e;--green-glow:rgba(34,197,94,.2);
+  --red:#ef4444;--red-glow:rgba(239,68,68,.2);
+  --blue:#3b82f6;--blue-glow:rgba(59,130,246,.2);
+  --yellow:#eab308;
+  --radius:12px;--radius-lg:16px;
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 1px 2px rgba(0,0,0,.3);
+  --shadow-lg:0 10px 30px rgba(0,0,0,.5);
+}
+html{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+body{min-height:100vh;padding:0 0 60px}
+
+/* ── Layout ─────────────────────────────────────────────── */
+.container{max-width:960px;margin:0 auto;padding:0 20px}
+header{padding:28px 0 20px;border-bottom:1px solid var(--border)}
+.header-inner{display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .icon{font-size:28px}
+.brand h1{font-size:22px;font-weight:700;letter-spacing:-.3px}
+.brand span{font-size:13px;color:var(--text-muted);font-weight:500;margin-left:4px}
+.status-pill{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:var(--card);border:1px solid var(--border)}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--text-muted)}
+.status-dot.online{background:var(--green);box-shadow:0 0 8px var(--green-glow)}
+.status-dot.offline{background:var(--red);box-shadow:0 0 8px var(--red-glow)}
+
+.grid{display:grid;gap:16px;margin-top:24px}
+.grid-2{grid-template-columns:1fr 1fr}
+.grid-3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:640px){.grid-2,.grid-3{grid-template-columns:1fr}}
+
+/* ── Cards ──────────────────────────────────────────────── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;transition:border-color .2s}
+.card:hover{border-color:var(--border-hover)}
+.card-title{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--text-muted);margin-bottom:16px}
+
+/* ── Arm/Disarm Toggle ──────────────────────────────────── */
+.arm-section{text-align:center;padding:32px 24px}
+.arm-label{font-size:14px;font-weight:600;color:var(--text-secondary);margin-bottom:16px}
+.toggle-wrap{display:flex;align-items:center;justify-content:center;gap:14px}
+.toggle-text{font-size:13px;font-weight:600;width:70px}
+.toggle-text.left{text-align:right;color:var(--red)}
+.toggle-text.right{text-align:left;color:var(--green)}
+.toggle{position:relative;width:64px;height:34px;cursor:pointer}
+.toggle input{display:none}
+.toggle .slider{position:absolute;inset:0;background:var(--red);border-radius:34px;transition:.3s;box-shadow:0 0 12px var(--red-glow)}
+.toggle .slider::before{content:'';position:absolute;width:26px;height:26px;border-radius:50%;background:#fff;top:4px;left:4px;transition:.3s;box-shadow:var(--shadow)}
+.toggle input:checked+.slider{background:var(--green);box-shadow:0 0 12px var(--green-glow)}
+.toggle input:checked+.slider::before{transform:translateX(30px)}
+.arm-status{margin-top:14px;font-size:20px;font-weight:800;letter-spacing:-.3px}
+.arm-status.armed{color:var(--green)}
+.arm-status.disarmed{color:var(--red)}
+
+/* ── Sliders ────────────────────────────────────────────── */
+.slider-group{margin-bottom:20px}
+.slider-group:last-child{margin-bottom:0}
+.slider-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.slider-label{font-size:13px;font-weight:600;color:var(--text-secondary)}
+.slider-value{font-size:14px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums;min-width:40px;text-align:right}
+input[type=range]{-webkit-appearance:none;width:100%;height:6px;border-radius:3px;background:#27272a;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);box-shadow:0 0 10px var(--accent-glow);cursor:pointer;transition:.15s}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15)}
+
+/* ── Buttons ────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 24px;border-radius:var(--radius);font-size:14px;font-weight:600;border:none;cursor:pointer;transition:.2s;font-family:inherit}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 0 14px var(--accent-glow)}
+.btn-primary:hover{filter:brightness(1.15);transform:translateY(-1px)}
+.btn-primary:active{transform:translateY(0)}
+.btn-danger{background:var(--red);color:#fff;box-shadow:0 0 14px var(--red-glow)}
+.btn-danger:hover{filter:brightness(1.15);transform:translateY(-1px)}
+.btn-danger:active{transform:translateY(0)}
+.btn-outline{background:transparent;color:var(--text-secondary);border:1px solid var(--border)}
+.btn-outline:hover{color:var(--text);border-color:var(--border-hover);background:var(--card-hover)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important;filter:none!important}
+
+.test-section{text-align:center}
+.test-hint{font-size:12px;color:var(--text-muted);margin-top:10px}
+
+/* ── Apply Bar ──────────────────────────────────────────── */
+.apply-bar{display:flex;gap:10px;margin-top:20px;justify-content:flex-end}
+
+/* ── Sensor Grid ────────────────────────────────────────── */
+.sensor-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:640px){.sensor-grid{grid-template-columns:repeat(2,1fr)}}
+.sensor-tile{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center;transition:.2s}
+.sensor-tile:hover{border-color:var(--border-hover)}
+.sensor-name{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.sensor-val{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.sensor-unit{font-size:11px;color:var(--text-muted);margin-top:2px}
+
+/* ── AQI Badge ──────────────────────────────────────────── */
+.aqi-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 20px;border-radius:24px;font-size:15px;font-weight:700;margin-top:12px}
+.aqi-good{background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.2)}
+.aqi-moderate{background:rgba(234,179,8,.12);color:#eab308;border:1px solid rgba(234,179,8,.2)}
+.aqi-usg{background:rgba(249,115,22,.12);color:#f97316;border:1px solid rgba(249,115,22,.2)}
+.aqi-unhealthy{background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.2)}
+.aqi-very{background:rgba(168,85,247,.12);color:#a855f7;border:1px solid rgba(168,85,247,.2)}
+.aqi-hazardous{background:rgba(220,38,38,.15);color:#dc2626;border:1px solid rgba(220,38,38,.25)}
+
+/* ── Command Log ────────────────────────────────────────── */
+.log-list{max-height:220px;overflow-y:auto;font-size:12px;font-family:'SF Mono',ui-monospace,monospace}
+.log-list::-webkit-scrollbar{width:4px}
+.log-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.log-entry{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.log-entry:last-child{border:none}
+.log-time{color:var(--text-muted);white-space:nowrap;min-width:60px}
+.log-cmd{color:var(--accent);word-break:break-all}
+.log-empty{color:var(--text-muted);font-style:italic;padding:20px 0;text-align:center}
+
+/* ── Toast Notification ─────────────────────────────────── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 24px;font-size:13px;font-weight:600;box-shadow:var(--shadow-lg);z-index:999;opacity:0;transition:.35s cubic-bezier(.4,0,.2,1);pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast.success{border-color:var(--green);color:var(--green)}
+.toast.error{border-color:var(--red);color:var(--red)}
+
+/* ── Misc ───────────────────────────────────────────────── */
+.section-title{font-size:16px;font-weight:700;margin:32px 0 8px;letter-spacing:-.2px}
+.section-desc{font-size:13px;color:var(--text-muted);margin-bottom:16px}
+.divider{border:none;border-top:1px solid var(--border);margin:24px 0}
+a.back{font-size:13px;color:var(--text-muted);text-decoration:none}
+a.back:hover{color:var(--text)}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <span class="icon">🔥</span>
+        <h1>Ember<span>Control Panel</span></h1>
+      </div>
+      <div class="status-pill">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Connecting…</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Row 1: Arm/Disarm + Test Alarm -->
+  <div class="grid grid-2" style="margin-top:24px">
+
+    <!-- Arm / Disarm -->
+    <div class="card arm-section">
+      <div class="card-title">Alarm System</div>
+      <div class="arm-label">Physical Alarm</div>
+      <div class="toggle-wrap">
+        <span class="toggle-text left">DISARM</span>
+        <label class="toggle">
+          <input type="checkbox" id="armToggle" checked>
+          <span class="slider"></span>
+        </label>
+        <span class="toggle-text right">ARM</span>
+      </div>
+      <div class="arm-status armed" id="armStatus">ARMED</div>
+    </div>
+
+    <!-- Test Alarm -->
+    <div class="card test-section" style="display:flex;flex-direction:column;align-items:center;justify-content:center">
+      <div class="card-title">Manual Test</div>
+      <button class="btn btn-danger" id="testBtn" onclick="sendTestAlarm()">
+        🔔 Test Alarm (3s)
+      </button>
+      <div class="test-hint">Triggers the physical buzzer for 3 seconds, then auto-clears.</div>
+    </div>
+  </div>
+
+  <!-- Row 2: Threshold Configuration -->
+  <h3 class="section-title">Threshold Configuration</h3>
+  <p class="section-desc">Adjust AQI trigger/clear thresholds and debounce count. Changes are sent to the K64F on the next polling cycle (&lt; 5 seconds).</p>
+
+  <div class="card">
+    <div class="slider-group">
+      <div class="slider-header">
+        <span class="slider-label">AQI Trigger Threshold</span>
+        <span class="slider-value" id="triggerVal">151</span>
+      </div>
+      <input type="range" id="triggerSlider" min="50" max="500" value="151" step="1" oninput="document.getElementById('triggerVal').textContent=this.value">
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-header">
+        <span class="slider-label">AQI Clear Threshold</span>
+        <span class="slider-value" id="clearVal">100</span>
+      </div>
+      <input type="range" id="clearSlider" min="25" max="300" value="100" step="1" oninput="document.getElementById('clearVal').textContent=this.value">
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-header">
+        <span class="slider-label">Debounce Cycles</span>
+        <span class="slider-value" id="debounceVal">3</span>
+      </div>
+      <input type="range" id="debounceSlider" min="1" max="10" value="3" step="1" oninput="document.getElementById('debounceVal').textContent=this.value">
+    </div>
+
+    <div class="apply-bar">
+      <button class="btn btn-outline" onclick="resetSliders()">Reset Defaults</button>
+      <button class="btn btn-primary" id="applyBtn" onclick="applyConfig()">Apply Configuration</button>
+    </div>
+  </div>
+
+  <!-- Row 3: Live Sensor Readings + AQI -->
+  <h3 class="section-title">Real-Time Sensor Readings</h3>
+  <p class="section-desc">Latest data from the K64F device. Updates every 3 seconds.</p>
+
+  <div class="card" style="text-align:center">
+    <div id="aqiBadge" class="aqi-badge aqi-good">AQI: —</div>
+    <div style="margin-top:18px">
+      <div class="sensor-grid">
+        <div class="sensor-tile"><div class="sensor-name">PM2.5</div><div class="sensor-val" id="sPM25">—</div><div class="sensor-unit">μg/m³</div></div>
+        <div class="sensor-tile"><div class="sensor-name">PM10</div><div class="sensor-val" id="sPM10">—</div><div class="sensor-unit">μg/m³</div></div>
+        <div class="sensor-tile"><div class="sensor-name">Temperature</div><div class="sensor-val" id="sTemp">—</div><div class="sensor-unit">°C</div></div>
+        <div class="sensor-tile"><div class="sensor-name">Humidity</div><div class="sensor-val" id="sHum">—</div><div class="sensor-unit">%</div></div>
+        <div class="sensor-tile"><div class="sensor-name">MQ Gas</div><div class="sensor-val" id="sMQ">—</div><div class="sensor-unit">V</div></div>
+        <div class="sensor-tile"><div class="sensor-name">Alarm</div><div class="sensor-val" id="sAlarm">—</div><div class="sensor-unit"></div></div>
+      </div>
+    </div>
+    <div style="margin-top:14px;font-size:12px;color:var(--text-muted)">Last updated: <span id="lastUpdated">—</span></div>
+  </div>
+
+  <!-- Row 4: Command Log -->
+  <h3 class="section-title">Command Log</h3>
+  <div class="card">
+    <div class="log-list" id="logList">
+      <div class="log-empty">No commands sent yet.</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+  <a href="/" class="back">← Back to Dashboard</a>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';  // same origin
+const DEVICE = 'K64F-ember';
+let lastArmState = true;  // default armed
+
+// ── Toast ─────────────────────────────────────────────────
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  setTimeout(() => t.classList.add('show'), 10);
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── Arm / Disarm ──────────────────────────────────────────
+document.getElementById('armToggle').addEventListener('change', function() {
+  const armed = this.checked;
+  lastArmState = armed;
+  updateArmUI(armed);
+  sendCommand({ arm: armed });
+});
+
+function updateArmUI(armed) {
+  const el = document.getElementById('armStatus');
+  el.textContent = armed ? 'ARMED' : 'DISARMED';
+  el.className = 'arm-status ' + (armed ? 'armed' : 'disarmed');
+}
+
+// ── Sliders ───────────────────────────────────────────────
+function resetSliders() {
+  document.getElementById('triggerSlider').value = 151;
+  document.getElementById('triggerVal').textContent = '151';
+  document.getElementById('clearSlider').value = 100;
+  document.getElementById('clearVal').textContent = '100';
+  document.getElementById('debounceSlider').value = 3;
+  document.getElementById('debounceVal').textContent = '3';
+}
+
+function applyConfig() {
+  const trigger  = parseInt(document.getElementById('triggerSlider').value);
+  const clear    = parseInt(document.getElementById('clearSlider').value);
+  const debounce = parseInt(document.getElementById('debounceSlider').value);
+
+  if (clear >= trigger) {
+    showToast('Clear threshold must be lower than trigger!', 'error');
+    return;
+  }
+
+  sendCommand({
+    aqi_trigger: trigger,
+    aqi_clear:   clear,
+    debounce:    debounce
+  });
+}
+
+// ── Test Alarm ────────────────────────────────────────────
+function sendTestAlarm() {
+  const btn = document.getElementById('testBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Testing…';
+  sendCommand({ test_alarm: true });
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = '🔔 Test Alarm (3s)';
+  }, 4000);
+}
+
+// ── Send Command to Server ────────────────────────────────
+async function sendCommand(cmd) {
+  cmd.device_id = DEVICE;
+  try {
+    const res = await fetch(API + '/command', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(cmd)
+    });
+    if (res.ok) {
+      showToast('Command queued ✓');
+      fetchLog();
+    } else {
+      showToast('Failed to send command', 'error');
+    }
+  } catch(e) {
+    showToast('Network error', 'error');
+  }
+}
+
+// ── Poll Sensor Data ──────────────────────────────────────
+async function fetchSensors() {
+  try {
+    const res = await fetch(API + '/history?device_id=' + DEVICE);
+    const data = await res.json();
+    if (data.predictions && data.predictions.length > 0) {
+      const latest = data.predictions[0];  // newest first
+      document.getElementById('sPM25').textContent = latest.pm25 != null ? Math.round(latest.pm25) : '—';
+      document.getElementById('sPM10').textContent = latest.pm10 != null ? Math.round(latest.pm10) : '—';
+      document.getElementById('sTemp').textContent = latest.temperature != null ? latest.temperature.toFixed(1) : '—';
+      document.getElementById('sHum').textContent = latest.humidity != null ? latest.humidity.toFixed(1) : '—';
+      document.getElementById('sMQ').textContent = latest.mq_analog != null ? latest.mq_analog.toFixed(3) : '—';
+
+      const alarmEl = document.getElementById('sAlarm');
+      alarmEl.textContent = latest.alarm || '—';
+      alarmEl.style.color = latest.alarm === 'ON' ? 'var(--red)' : 'var(--green)';
+
+      // AQI badge
+      const aqi = latest.aqi != null ? Math.round(latest.aqi) : null;
+      const badge = document.getElementById('aqiBadge');
+      if (aqi !== null) {
+        let cls = 'aqi-good', label = 'Good';
+        if (aqi > 300)      { cls = 'aqi-hazardous'; label = 'Hazardous'; }
+        else if (aqi > 200) { cls = 'aqi-very';      label = 'Very Unhealthy'; }
+        else if (aqi > 150) { cls = 'aqi-unhealthy';  label = 'Unhealthy'; }
+        else if (aqi > 100) { cls = 'aqi-usg';        label = 'USG'; }
+        else if (aqi > 50)  { cls = 'aqi-moderate';    label = 'Moderate'; }
+        badge.className = 'aqi-badge ' + cls;
+        badge.textContent = 'AQI: ' + aqi + ' — ' + label;
+      }
+
+      document.getElementById('lastUpdated').textContent = latest.timestamp || '—';
+    }
+  } catch(e) { /* silent */ }
+}
+
+// ── Poll Status ───────────────────────────────────────────
+async function fetchStatus() {
+  try {
+    const res = await fetch(API + '/status');
+    if (res.ok) {
+      document.getElementById('statusDot').className = 'status-dot online';
+      document.getElementById('statusText').textContent = 'Online';
+    } else { throw 0; }
+  } catch(e) {
+    document.getElementById('statusDot').className = 'status-dot offline';
+    document.getElementById('statusText').textContent = 'Offline';
+  }
+}
+
+// ── Poll Command Log ──────────────────────────────────────
+async function fetchLog() {
+  try {
+    const res = await fetch(API + '/command_log');
+    const data = await res.json();
+    const list = document.getElementById('logList');
+    if (data.log && data.log.length > 0) {
+      list.innerHTML = data.log.slice().reverse().map(e =>
+        '<div class="log-entry">' +
+          '<span class="log-time">' + e.time + '</span>' +
+          '<span class="log-cmd">' + JSON.stringify(e.command) + '</span>' +
+        '</div>'
+      ).join('');
+    }
+  } catch(e) { /* silent */ }
+}
+
+// ── Init ──────────────────────────────────────────────────
+fetchStatus();
+fetchSensors();
+fetchLog();
+setInterval(fetchSensors, 3000);
+setInterval(fetchStatus, 15000);
+setInterval(fetchLog, 10000);
+</script>
+</body>
+</html>
