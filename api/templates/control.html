@@ -339,8 +339,13 @@ async function sendCommand(cmd) {
 // ── Poll Sensor Data ──────────────────────────────────────
 async function fetchSensors() {
   try {
-    const res = await fetch(API + '/history?device_id=' + DEVICE);
-    const data = await res.json();
+    // Try device-specific first, fall back to all devices
+    let res = await fetch(API + '/history?device_id=' + DEVICE);
+    let data = await res.json();
+    if (!data.predictions || data.predictions.length === 0) {
+      res = await fetch(API + '/history');
+      data = await res.json();
+    }
     if (data.predictions && data.predictions.length > 0) {
       const latest = data.predictions[0];  // newest first
       document.getElementById('sPM25').textContent = latest.pm25 != null ? Math.round(latest.pm25) : '—';
