@@ -240,6 +240,81 @@ def dashboard():
 
 
 # ---------------------------------------------------------------------------
+# M5: POST /fire_alert — K64F sends immediate fire event data
+# ---------------------------------------------------------------------------
+fire_alert_log = []        # in-memory log of fire events
+MAX_FIRE_LOG   = 50
+
+@app.route('/fire_alert', methods=['POST'])
+def fire_alert():
+    """
+    Receives fire/smoke detection event from K64F.
+    Logs the event and could trigger SMS alert via external service.
+
+    Body:
+    {
+        "device_id":   "K64F-ember",
+        "event":       "FIRE_ALERT",
+        "timestamp":   "2026-03-26 10:30:05",
+        "fire_score":  0.72,
+        "pm_delta":    45.2,
+        "mq_delta":    0.085,
+        "temp_delta":  2.1,
+        "pm25":        120,
+        "pm10":        180,
+        "mq_analog":   0.35,
+        "temperature": 38.5,
+        "humidity":    22.0,
+        "tvoc":        800,
+        "eco2":        1200
+    }
+    """
+    if not request.is_json:
+        return jsonify({'error': 'JSON required'}), 400
+
+    data = request.get_json()
+    device_id = data.get('device_id', 'K64F-ember')
+
+    # Add server-side timestamp
+    entry = {
+        'received_at': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC'),
+        'device_id':   device_id,
+        'data':        data,
+    }
+
+    with _config_lock:
+        fire_alert_log.append(entry)
+        if len(fire_alert_log) > MAX_FIRE_LOG:
+            fire_alert_log.pop(0)
+
+        # Update device state with fire alert
+        if device_id not in device_state:
+            device_state[device_id] = {}
+        device_state[device_id]['fire_alert'] = True
+        device_state[device_id]['fire_score'] = data.get('fire_score', 0)
+        device_state[device_id]['fire_time']  = entry['received_at']
+
+    print(f"[FIRE ALERT] from {device_id}: score={data.get('fire_score', '?')} "
+          f"pm_delta={data.get('pm_delta', '?')} mq_delta={data.get('mq_delta', '?')} "
+          f"temp_delta={data.get('temp_delta', '?')}")
+
+    # TODO: Trigger SMS alert via Twilio / Rajini's SMS service here
+    # sms_service.send_fire_alert(device_id, data)
+
+    return jsonify({'status': 'received', 'device_id': device_id}), 200
+
+
+# ---------------------------------------------------------------------------
+# M5: GET /fire_log — fire alert history
+# ---------------------------------------------------------------------------
+@app.route('/fire_log', methods=['GET'])
+def get_fire_log():
+    """Returns the last 50 fire alert events."""
+    with _config_lock:
+        return jsonify({'log': list(fire_alert_log)}), 200
+
+
+# ---------------------------------------------------------------------------
 # M4: POST /command — web control panel pushes config commands
 # ---------------------------------------------------------------------------
 @app.route('/command', methods=['POST'])
