@@ -551,6 +551,225 @@
             margin-bottom: 12px;
             opacity: 0.3;
         }
+
+        /* ── Fire Alert Banner ── */
+        .fire-banner {
+            display: none;
+            background: linear-gradient(135deg, rgba(239,68,68,0.12) 0%, rgba(249,115,22,0.10) 100%);
+            border: 1px solid rgba(239,68,68,0.35);
+            border-radius: var(--radius);
+            padding: 20px 28px;
+            margin-bottom: 20px;
+            animation: firePulse 2s ease-in-out infinite;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .fire-banner::before {
+            content: '';
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(239,68,68,0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .fire-banner.active {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        @keyframes firePulse {
+            0%, 100% { border-color: rgba(239,68,68,0.35); box-shadow: 0 0 20px rgba(239,68,68,0.05); }
+            50% { border-color: rgba(239,68,68,0.6); box-shadow: 0 0 30px rgba(239,68,68,0.15); }
+        }
+
+        .fire-icon {
+            font-size: 2.5rem;
+            line-height: 1;
+            flex-shrink: 0;
+            animation: fireFlicker 0.6s ease-in-out infinite alternate;
+        }
+
+        @keyframes fireFlicker {
+            0% { transform: scale(1) rotate(-3deg); }
+            100% { transform: scale(1.1) rotate(3deg); }
+        }
+
+        .fire-info { position: relative; flex: 1; }
+
+        .fire-title {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--red);
+            letter-spacing: -0.01em;
+            margin-bottom: 4px;
+        }
+
+        .fire-subtitle {
+            font-size: 0.78rem;
+            color: #f87171;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .fire-details {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .fire-detail {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+
+        .fire-detail span {
+            color: #fca5a5;
+            font-weight: 600;
+        }
+
+        .fire-score-badge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 80px;
+            flex-shrink: 0;
+        }
+
+        .fire-score-number {
+            font-size: 2rem;
+            font-weight: 900;
+            color: var(--red);
+            line-height: 1;
+        }
+
+        .fire-score-label {
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #f87171;
+            margin-top: 4px;
+        }
+
+        /* ── Fire Event Log ── */
+        .fire-log-card {
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .fire-log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .fire-log-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .fire-log-title .fire-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--red);
+        }
+
+        .fire-log-count {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            background: rgba(239,68,68,0.08);
+            padding: 2px 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(239,68,68,0.15);
+        }
+
+        .fire-event-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .fire-event-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 16px;
+            background: rgba(239,68,68,0.04);
+            border: 1px solid rgba(239,68,68,0.08);
+            border-radius: var(--radius-sm);
+            transition: border-color 0.2s;
+        }
+
+        .fire-event-item:hover {
+            border-color: rgba(239,68,68,0.2);
+        }
+
+        .fire-event-time {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+            min-width: 140px;
+            flex-shrink: 0;
+        }
+
+        .fire-event-score {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--red);
+            min-width: 50px;
+        }
+
+        .fire-event-deltas {
+            display: flex;
+            gap: 16px;
+            flex: 1;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+        }
+
+        .fire-event-deltas span {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .fire-event-sensors {
+            display: flex;
+            gap: 12px;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+        }
+
+        .fire-event-sensors span {
+            color: var(--text-muted);
+        }
+
+        .fire-empty {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-dim);
+            font-size: 0.82rem;
+        }
+
+        .fire-empty-icon {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            opacity: 0.3;
+        }
     </style>
 </head>
 <body>
@@ -565,6 +784,26 @@
         </div>
         <div class="header-right">
             <span class="header-meta" id="last-update">Waiting for data...</span>
+        </div>
+    </div>
+
+    <!-- Fire Alert Banner (hidden by default) -->
+    <div class="fire-banner fade-in" id="fire-banner">
+        <div class="fire-icon">🔥</div>
+        <div class="fire-info">
+            <div class="fire-title">FIRE / SMOKE DETECTED</div>
+            <div class="fire-subtitle" id="fire-subtitle">Multi-sensor fusion alert triggered</div>
+            <div class="fire-details">
+                <div class="fire-detail">PM Δ: <span id="fire-pm-delta">—</span></div>
+                <div class="fire-detail">Gas Δ: <span id="fire-mq-delta">—</span></div>
+                <div class="fire-detail">Temp Δ: <span id="fire-temp-delta">—</span></div>
+                <div class="fire-detail">Time: <span id="fire-time">—</span></div>
+            </div>
+        </div>
+        <div class="fire-score-badge">
+            <div class="fire-score-number" id="fire-score">—</div>
+            <div class="fire-score-label">Fire Score</div>
+            <button onclick="clearFireAlert()" style="margin-top:10px;padding:6px 14px;border-radius:8px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;font-size:0.7rem;font-weight:600;cursor:pointer;font-family:inherit;transition:0.2s" onmouseover="this.style.background='rgba(239,68,68,0.25)'" onmouseout="this.style.background='rgba(239,68,68,0.15)'">Dismiss</button>
         </div>
     </div>
 
@@ -652,6 +891,17 @@
                 <span class="chart-value" id="cv-mq">—</span>
             </div>
             <canvas id="chart-mq"></canvas>
+        </div>
+    </div>
+
+    <!-- Fire Event Log -->
+    <div class="card fire-log-card fade-in" id="fire-log-section">
+        <div class="fire-log-header">
+            <div class="fire-log-title"><span class="fire-dot"></span> Fire & Smoke Events</div>
+            <span class="fire-log-count" id="fire-log-count">0 events</span>
+        </div>
+        <div class="fire-event-list" id="fire-event-list">
+            <div class="fire-empty"><div class="fire-empty-icon">🛡️</div>No fire events recorded — system monitoring</div>
         </div>
     </div>
 
@@ -1036,11 +1286,101 @@ async function pollStatus() {
     }
 }
 
+// ── Fire Alert Polling ──
+async function pollFireState() {
+    try {
+        // Check device state for active fire alert
+        const stateRes = await fetch('/device_state?device_id=K64F-ember');
+        const state = await stateRes.json();
+
+        const banner = document.getElementById('fire-banner');
+
+        if (state.fire_alert) {
+            banner.classList.add('active');
+            document.getElementById('fire-score').textContent =
+                state.fire_score != null ? (state.fire_score * 100).toFixed(0) + '%' : '—';
+            document.getElementById('fire-time').textContent =
+                state.fire_time || '—';
+        } else {
+            banner.classList.remove('active');
+        }
+    } catch (e) {
+        // Fire state endpoint unavailable
+    }
+}
+
+async function clearFireAlert() {
+    try {
+        await fetch('/fire_clear', { method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({device_id: 'K64F-ember'})
+        });
+        document.getElementById('fire-banner').classList.remove('active');
+    } catch (e) { console.error('Failed to clear fire alert:', e); }
+}
+
+async function pollFireLog() {
+    try {
+        const res = await fetch('/fire_log');
+        const data = await res.json();
+        const log = data.log || [];
+
+        const listEl = document.getElementById('fire-event-list');
+        const countEl = document.getElementById('fire-log-count');
+        countEl.textContent = log.length + ' event' + (log.length !== 1 ? 's' : '');
+
+        if (!log.length) {
+            listEl.innerHTML = '<div class="fire-empty"><div class="fire-empty-icon">🛡️</div>No fire events recorded — system monitoring</div>';
+            return;
+        }
+
+        // Show most recent first
+        const reversed = [...log].reverse();
+        listEl.innerHTML = reversed.map(entry => {
+            const d = entry.data || {};
+            const time = entry.received_at || '—';
+            const score = d.fire_score != null ? (d.fire_score * 100).toFixed(0) + '%' : '—';
+            const pmD  = d.pm_delta != null ? d.pm_delta.toFixed(1) : '—';
+            const mqD  = d.mq_delta != null ? d.mq_delta.toFixed(4) : '—';
+            const tmpD = d.temp_delta != null ? d.temp_delta.toFixed(1) : '—';
+            const pm25 = d.pm2_5 != null ? d.pm2_5 : (d.pm25 != null ? d.pm25 : '—');
+            const temp = d.temperature != null ? d.temperature.toFixed(1) : '—';
+            const mq   = d.mq_analog != null ? d.mq_analog.toFixed(4) : '—';
+
+            return `<div class="fire-event-item">
+                <div class="fire-event-time">${time}</div>
+                <div class="fire-event-score">${score}</div>
+                <div class="fire-event-deltas">
+                    PM Δ <span>${pmD}</span> · Gas Δ <span>${mqD}</span> · Temp Δ <span>${tmpD}°C</span>
+                </div>
+                <div class="fire-event-sensors">
+                    PM2.5 <span>${pm25}</span> · T <span>${temp}°C</span> · MQ <span>${mq}V</span>
+                </div>
+            </div>`;
+        }).join('');
+
+        // Update banner with latest fire event details
+        if (reversed.length > 0) {
+            const latest = reversed[0].data || {};
+            if (latest.pm_delta != null) document.getElementById('fire-pm-delta').textContent = latest.pm_delta.toFixed(1);
+            if (latest.mq_delta != null) document.getElementById('fire-mq-delta').textContent = latest.mq_delta.toFixed(4);
+            if (latest.temp_delta != null) document.getElementById('fire-temp-delta').textContent = latest.temp_delta.toFixed(1) + '°C';
+        }
+
+    } catch (e) {
+        // Fire log endpoint unavailable
+    }
+}
+
 // ── Start ──
 poll();
 pollStatus();
+pollFireState();
+pollFireLog();
 setInterval(poll, POLL_MS);
 setInterval(pollStatus, 15000);
+setInterval(pollFireState, 3000);
+setInterval(pollFireLog, 5000);
 
 </script>
 </body>

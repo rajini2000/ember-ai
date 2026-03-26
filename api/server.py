@@ -315,6 +315,21 @@ def get_fire_log():
 
 
 # ---------------------------------------------------------------------------
+# M5: POST /fire_clear — dismiss fire alert from web dashboard
+# ---------------------------------------------------------------------------
+@app.route('/fire_clear', methods=['POST'])
+def fire_clear():
+    """Clears the fire_alert flag on the device state (web dismiss)."""
+    device_id = 'K64F-ember'
+    if request.is_json:
+        device_id = request.get_json().get('device_id', device_id)
+    with _config_lock:
+        if device_id in device_state:
+            device_state[device_id]['fire_alert'] = False
+    return jsonify({'status': 'cleared', 'device_id': device_id}), 200
+
+
+# ---------------------------------------------------------------------------
 # M4: POST /command — web control panel pushes config commands
 # ---------------------------------------------------------------------------
 @app.route('/command', methods=['POST'])
