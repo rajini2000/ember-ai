@@ -1,4 +1,11 @@
 """
+GenAI Declaration (Claude AI - Anthropic):
+This file was mostly written by Claude AI. I provided the data format requirements
+and feature specifications, and AI generated the loader, preprocessor, normalization,
+and episode splitter code.
+"""
+
+"""
 Data loader and preprocessor.
 
 Handles three data sources:

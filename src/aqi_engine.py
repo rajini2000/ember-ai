@@ -1,4 +1,12 @@
 """
+GenAI Declaration (Claude AI - Anthropic):
+I described the AQI rules, sensor breakpoints, and how each sensor should map to an air
+quality score. I wrote approximately 40% of this file myself and used Claude AI to fill
+in the remaining 60%. The logic, thresholds, and design decisions are mine — AI helped
+complete the code based on my descriptions and partial implementation.
+"""
+
+"""
 Rule-based AQI engine — exact implementation of SYSTEM_DOCUMENTATION.md Section 4.
 Used to:
   1. Label training data (what IS dangerous vs safe)

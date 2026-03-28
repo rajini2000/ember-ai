@@ -1,4 +1,11 @@
 """
+GenAI Declaration (Claude AI - Anthropic):
+Lines 13–131 (sensor range constants, episode structure, clean/pollution scenarios,
+and single-reading generators) were written by me. Lines 132 onwards (interpolation
+logic, decay curves, dataframe conversion, and standalone runner) were written by Claude AI.
+"""
+
+"""
 Synthetic air quality data generator.
 
 Produces realistic time-series CSV data based on SYSTEM_DOCUMENTATION.md Section 9

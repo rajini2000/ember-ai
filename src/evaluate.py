@@ -1,4 +1,11 @@
 """
+GenAI Declaration (Claude AI - Anthropic):
+Approximately 60% of this file was written by Claude AI, including the plot functions
+and report formatting. I wrote the evaluation logic, selected the metrics to track
+(accuracy, recall, false negative rate), and decided what the output should look like.
+"""
+
+"""
 Model evaluation — metrics, confusion matrix, and training plots.
 
 Usage:
