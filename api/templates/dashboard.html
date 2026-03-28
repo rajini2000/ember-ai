@@ -4,131 +4,404 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ember AI — Live Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:           #09090b;
+            --bg-card:      #111113;
+            --bg-card-alt:  #18181b;
+            --border:       rgba(255,255,255,0.06);
+            --border-hover: rgba(255,255,255,0.12);
+            --text:         #fafafa;
+            --text-muted:   #71717a;
+            --text-dim:     #52525b;
+            --green:        #22c55e;
+            --green-glow:   rgba(34,197,94,0.15);
+            --red:          #ef4444;
+            --red-glow:     rgba(239,68,68,0.15);
+            --yellow:       #eab308;
+            --orange:       #f97316;
+            --purple:       #a855f7;
+            --blue:         #3b82f6;
+            --cyan:         #06b6d4;
+            --maroon:       #dc2626;
+            --radius:       12px;
+            --radius-sm:    8px;
+        }
 
         body {
-            font-family: 'Segoe UI', sans-serif;
-            background: #0f1117;
-            color: #e0e0e0;
-            padding: 20px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
-        h1 {
-            font-size: 1.4rem;
-            font-weight: 600;
-            color: #ffffff;
-            margin-bottom: 4px;
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 32px 24px;
         }
 
-        .subtitle {
-            font-size: 0.8rem;
-            color: #666;
-            margin-bottom: 20px;
+        /* ── Header ── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 32px;
         }
 
-        /* ── Alarm banner ── */
-        #alarm-banner {
+        .header-left {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 14px 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            background: #1a2a1a;
-            border: 1px solid #2a4a2a;
-            transition: all 0.3s;
         }
 
-        #alarm-banner.danger {
-            background: #2a0a0a;
-            border-color: #ff3333;
-            animation: pulse-border 1s infinite;
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #fff 0%, #a1a1aa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
-        @keyframes pulse-border {
-            0%, 100% { border-color: #ff3333; }
-            50%       { border-color: #ff8888; }
-        }
-
-        #alarm-dot {
-            width: 18px;
-            height: 18px;
+        .logo-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: var(--orange);
             border-radius: 50%;
-            background: #22cc44;
-            flex-shrink: 0;
+            margin-right: 2px;
+            animation: logoPulse 2s ease-in-out infinite;
         }
 
-        #alarm-dot.danger {
-            background: #ff3333;
-            animation: blink 0.6s infinite;
-        }
-
-        @keyframes blink {
+        @keyframes logoPulse {
             0%, 100% { opacity: 1; }
-            50%       { opacity: 0.2; }
+            50% { opacity: 0.4; }
         }
 
-        #alarm-text {
-            font-size: 1rem;
+        .header-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            background: rgba(34,197,94,0.08);
+            border: 1px solid rgba(34,197,94,0.15);
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--green);
+        }
+
+        .header-badge .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--green);
+            border-radius: 50%;
+            animation: livePulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes livePulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+            50% { opacity: 0.7; box-shadow: 0 0 0 4px rgba(34,197,94,0); }
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-meta {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+
+        /* ── Card System ── */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            transition: border-color 0.2s ease;
+        }
+
+        .card:hover {
+            border-color: var(--border-hover);
+        }
+
+        /* ── Hero AQI Card ── */
+        .hero {
+            position: relative;
+            padding: 36px 40px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            gap: 48px;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -80px;
+            left: -80px;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--green-glow) 0%, transparent 70%);
+            pointer-events: none;
+            transition: background 0.6s ease;
+        }
+
+        .hero.danger::before {
+            background: radial-gradient(circle, var(--red-glow) 0%, transparent 70%);
+        }
+
+        .hero-aqi {
+            position: relative;
+            text-align: center;
+            min-width: 200px;
+        }
+
+        .aqi-number {
+            font-size: 5rem;
+            font-weight: 900;
+            letter-spacing: -0.04em;
+            line-height: 1;
+            color: var(--green);
+            transition: color 0.4s ease;
+        }
+
+        .aqi-label {
+            font-size: 0.82rem;
             font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-top: 8px;
         }
 
-        #alarm-aqi {
-            margin-left: auto;
+        .hero-details {
+            position: relative;
+            flex: 1;
+        }
+
+        .alarm-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 8px;
             font-size: 0.85rem;
-            color: #aaa;
+            font-weight: 600;
+            margin-bottom: 20px;
+            background: rgba(34,197,94,0.08);
+            border: 1px solid rgba(34,197,94,0.2);
+            color: var(--green);
+            transition: all 0.3s ease;
         }
 
-        /* ── Charts ── */
+        .alarm-status.danger {
+            background: rgba(239,68,68,0.08);
+            border-color: rgba(239,68,68,0.3);
+            color: var(--red);
+            animation: alarmPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes alarmPulse {
+            0%, 100% { border-color: rgba(239,68,68,0.3); }
+            50% { border-color: rgba(239,68,68,0.6); }
+        }
+
+        .alarm-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .alarm-status.danger .alarm-dot {
+            animation: alarmBlink 0.6s infinite;
+        }
+
+        @keyframes alarmBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+
+        .aqi-bar-wrapper {
+            margin-bottom: 16px;
+        }
+
+        .aqi-bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .aqi-bar-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .aqi-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, var(--green), var(--yellow));
+            transition: width 0.6s ease, background 0.4s ease;
+            width: 0%;
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 32px;
+        }
+
+        .hero-stat {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        .hero-stat span {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* ── Metrics Grid ── */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 1100px) { .metrics-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 600px)  { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+
+        .metric-card {
+            padding: 16px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-label {
+            font-size: 0.68rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+        }
+
+        .metric-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+            color: var(--text);
+        }
+
+        .metric-unit {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            font-weight: 400;
+        }
+
+        .metric-spark {
+            margin-top: 8px;
+            height: 32px;
+        }
+
+        .metric-spark canvas {
+            width: 100% !important;
+            height: 32px !important;
+        }
+
+        /* ── Charts Grid ── */
         .charts-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
+            gap: 12px;
             margin-bottom: 20px;
         }
 
-        @media (max-width: 900px) {
-            .charts-grid { grid-template-columns: 1fr; }
-        }
+        @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
 
         .chart-card {
-            background: #161b22;
-            border: 1px solid #2a2a3a;
-            border-radius: 8px;
-            padding: 14px;
+            padding: 20px;
         }
 
-        .chart-card h3 {
-            font-size: 0.75rem;
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .chart-title {
+            font-size: 0.72rem;
             font-weight: 500;
-            color: #888;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 10px;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+        }
+
+        .chart-value {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text);
         }
 
         .chart-card canvas {
-            max-height: 160px;
+            max-height: 180px;
         }
 
         /* ── Table ── */
         .table-card {
-            background: #161b22;
-            border: 1px solid #2a2a3a;
-            border-radius: 8px;
-            padding: 14px;
-            overflow-x: auto;
+            padding: 20px 0;
+            margin-bottom: 20px;
         }
 
-        .table-card h3 {
-            font-size: 0.75rem;
-            font-weight: 500;
-            color: #888;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 10px;
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            margin-bottom: 14px;
+        }
+
+        .table-title {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .table-count {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            background: rgba(255,255,255,0.04);
+            padding: 2px 10px;
+            border-radius: 10px;
+        }
+
+        .table-scroll {
+            overflow-x: auto;
+            padding: 0 20px;
         }
 
         table {
@@ -137,102 +410,614 @@
             font-size: 0.78rem;
         }
 
-        th {
-            color: #666;
+        thead th {
             text-align: left;
-            padding: 4px 8px;
-            border-bottom: 1px solid #2a2a3a;
+            padding: 8px 12px;
+            font-size: 0.68rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+            transition: color 0.2s;
         }
 
-        td {
-            padding: 5px 8px;
-            border-bottom: 1px solid #1e1e2e;
+        thead th:hover {
+            color: var(--text-muted);
         }
 
-        tr:last-child td { border-bottom: none; }
+        thead th.sorted {
+            color: var(--text);
+        }
+
+        thead th .sort-arrow {
+            margin-left: 4px;
+            opacity: 0.3;
+        }
+
+        thead th.sorted .sort-arrow {
+            opacity: 1;
+        }
+
+        tbody td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            white-space: nowrap;
+            color: #d4d4d8;
+        }
+
+        tbody tr {
+            transition: background 0.15s ease;
+        }
+
+        tbody tr:hover {
+            background: rgba(255,255,255,0.02);
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
 
         .badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 6px;
             font-weight: 600;
-            font-size: 0.7rem;
+            font-size: 0.68rem;
+            letter-spacing: 0.02em;
         }
 
-        .badge-on  { background: #3a0a0a; color: #ff6666; }
-        .badge-off { background: #0a2a0a; color: #44cc66; }
+        .badge-safe {
+            background: rgba(34,197,94,0.1);
+            color: var(--green);
+            border: 1px solid rgba(34,197,94,0.15);
+        }
+
+        .badge-danger {
+            background: rgba(239,68,68,0.1);
+            color: var(--red);
+            border: 1px solid rgba(239,68,68,0.15);
+        }
+
+        .badge-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .category-text {
+            font-size: 0.72rem;
+            font-weight: 500;
+        }
+
+        .cat-good        { color: var(--green); }
+        .cat-moderate     { color: var(--yellow); }
+        .cat-sensitive    { color: var(--orange); }
+        .cat-unhealthy    { color: var(--red); }
+        .cat-very         { color: var(--purple); }
+        .cat-hazardous    { color: var(--maroon); }
+
+        .aqi-cell {
+            font-weight: 600;
+        }
 
         /* ── Footer ── */
-        #footer {
-            margin-top: 16px;
-            font-size: 0.72rem;
-            color: #444;
+        .footer {
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-top: 1px solid var(--border);
+            font-size: 0.72rem;
+            color: var(--text-dim);
+        }
+
+        .footer-left {
+            display: flex;
+            gap: 20px;
+        }
+
+        .footer-item span {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* ── Animations ── */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        /* ── No data state ── */
+        .no-data {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+
+        .no-data-icon {
+            font-size: 2rem;
+            margin-bottom: 12px;
+            opacity: 0.3;
+        }
+
+        /* ── Fire Alert Banner ── */
+        .fire-banner {
+            display: none;
+            background: linear-gradient(135deg, rgba(239,68,68,0.12) 0%, rgba(249,115,22,0.10) 100%);
+            border: 1px solid rgba(239,68,68,0.35);
+            border-radius: var(--radius);
+            padding: 20px 28px;
+            margin-bottom: 20px;
+            animation: firePulse 2s ease-in-out infinite;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .fire-banner::before {
+            content: '';
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(239,68,68,0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .fire-banner.active {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        @keyframes firePulse {
+            0%, 100% { border-color: rgba(239,68,68,0.35); box-shadow: 0 0 20px rgba(239,68,68,0.05); }
+            50% { border-color: rgba(239,68,68,0.6); box-shadow: 0 0 30px rgba(239,68,68,0.15); }
+        }
+
+        .fire-icon {
+            font-size: 2.5rem;
+            line-height: 1;
+            flex-shrink: 0;
+            animation: fireFlicker 0.6s ease-in-out infinite alternate;
+        }
+
+        @keyframes fireFlicker {
+            0% { transform: scale(1) rotate(-3deg); }
+            100% { transform: scale(1.1) rotate(3deg); }
+        }
+
+        .fire-info { position: relative; flex: 1; }
+
+        .fire-title {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--red);
+            letter-spacing: -0.01em;
+            margin-bottom: 4px;
+        }
+
+        .fire-subtitle {
+            font-size: 0.78rem;
+            color: #f87171;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .fire-details {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .fire-detail {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+        }
+
+        .fire-detail span {
+            color: #fca5a5;
+            font-weight: 600;
+        }
+
+        .fire-score-badge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 80px;
+            flex-shrink: 0;
+        }
+
+        .fire-score-number {
+            font-size: 2rem;
+            font-weight: 900;
+            color: var(--red);
+            line-height: 1;
+        }
+
+        .fire-score-label {
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #f87171;
+            margin-top: 4px;
+        }
+
+        /* ── Fire Event Log ── */
+        .fire-log-card {
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .fire-log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .fire-log-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .fire-log-title .fire-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--red);
+        }
+
+        .fire-log-count {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            background: rgba(239,68,68,0.08);
+            padding: 2px 10px;
+            border-radius: 10px;
+            border: 1px solid rgba(239,68,68,0.15);
+        }
+
+        .fire-event-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .fire-event-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 16px;
+            background: rgba(239,68,68,0.04);
+            border: 1px solid rgba(239,68,68,0.08);
+            border-radius: var(--radius-sm);
+            transition: border-color 0.2s;
+        }
+
+        .fire-event-item:hover {
+            border-color: rgba(239,68,68,0.2);
+        }
+
+        .fire-event-time {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+            min-width: 140px;
+            flex-shrink: 0;
+        }
+
+        .fire-event-score {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--red);
+            min-width: 50px;
+        }
+
+        .fire-event-deltas {
+            display: flex;
+            gap: 16px;
+            flex: 1;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+        }
+
+        .fire-event-deltas span {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .fire-event-sensors {
+            display: flex;
+            gap: 12px;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+        }
+
+        .fire-event-sensors span {
+            color: var(--text-muted);
+        }
+
+        .fire-empty {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-dim);
+            font-size: 0.82rem;
+        }
+
+        .fire-empty-icon {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            opacity: 0.3;
         }
     </style>
 </head>
 <body>
 
-<h1>Ember AI — Air Quality Monitor</h1>
-<p class="subtitle">Live dashboard · updates every 2.5 seconds</p>
+<div class="container">
 
-<!-- Alarm status banner -->
-<div id="alarm-banner">
-    <div id="alarm-dot"></div>
-    <span id="alarm-text">AIR QUALITY: SAFE</span>
-    <span id="alarm-aqi">AQI — · —</span>
-</div>
-
-<!-- Charts -->
-<div class="charts-grid">
-    <div class="chart-card">
-        <h3>PM2.5 (µg/m³)</h3>
-        <canvas id="chartPM25"></canvas>
+    <!-- Header -->
+    <div class="header fade-in">
+        <div class="header-left">
+            <div class="logo"><span class="logo-dot"></span>Ember AI</div>
+            <div class="header-badge"><span class="dot"></span> Live</div>
+        </div>
+        <div class="header-right">
+            <span class="header-meta" id="last-update">Waiting for data...</span>
+        </div>
     </div>
-    <div class="chart-card">
-        <h3>AQI Score</h3>
-        <canvas id="chartAQI"></canvas>
-    </div>
-    <div class="chart-card">
-        <h3>MQ Gas Voltage (V)</h3>
-        <canvas id="chartMQ"></canvas>
-    </div>
-</div>
 
-<!-- Recent readings table -->
-<div class="table-card">
-    <h3>Recent Readings (last 10)</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Time</th>
-                <th>PM2.5</th>
-                <th>AQI</th>
-                <th>MQ (V)</th>
-                <th>Temp (°C)</th>
-                <th>Humidity (%)</th>
-                <th>Alarm</th>
-                <th>Category</th>
-            </tr>
-        </thead>
-        <tbody id="table-body">
-            <tr><td colspan="8" style="color:#555;text-align:center">Loading...</td></tr>
-        </tbody>
-    </table>
-</div>
+    <!-- Fire Alert Banner (hidden by default) -->
+    <div class="fire-banner fade-in" id="fire-banner">
+        <div class="fire-icon">🔥</div>
+        <div class="fire-info">
+            <div class="fire-title">FIRE / SMOKE DETECTED</div>
+            <div class="fire-subtitle" id="fire-subtitle">Multi-sensor fusion alert triggered</div>
+            <div class="fire-details">
+                <div class="fire-detail">PM Δ: <span id="fire-pm-delta">—</span></div>
+                <div class="fire-detail">Gas Δ: <span id="fire-mq-delta">—</span></div>
+                <div class="fire-detail">Temp Δ: <span id="fire-temp-delta">—</span></div>
+                <div class="fire-detail">Time: <span id="fire-time">—</span></div>
+            </div>
+        </div>
+        <div class="fire-score-badge">
+            <div class="fire-score-number" id="fire-score">—</div>
+            <div class="fire-score-label">Fire Score</div>
+            <button onclick="clearFireAlert()" style="margin-top:10px;padding:6px 14px;border-radius:8px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;font-size:0.7rem;font-weight:600;cursor:pointer;font-family:inherit;transition:0.2s" onmouseover="this.style.background='rgba(239,68,68,0.25)'" onmouseout="this.style.background='rgba(239,68,68,0.15)'">Dismiss</button>
+        </div>
+    </div>
 
-<div id="footer">
-    <span id="last-update">Last update: —</span>
-    <span>Ember AI v1.0.0 · Render.com</span>
+    <!-- Hero AQI Card -->
+    <div class="card hero fade-in" id="hero-card">
+        <div class="hero-aqi">
+            <div class="aqi-number" id="aqi-number">—</div>
+            <div class="aqi-label" id="aqi-category">AQI</div>
+        </div>
+        <div class="hero-details">
+            <div class="alarm-status" id="alarm-status">
+                <span class="alarm-dot"></span>
+                <span id="alarm-text">SAFE</span>
+            </div>
+            <div class="aqi-bar-wrapper">
+                <div class="aqi-bar-label">
+                    <span>Air Quality Index</span>
+                    <span id="aqi-fraction">— / 500</span>
+                </div>
+                <div class="aqi-bar-track">
+                    <div class="aqi-bar-fill" id="aqi-bar"></div>
+                </div>
+            </div>
+            <div class="hero-stats">
+                <div class="hero-stat">Device: <span id="device-id">—</span></div>
+                <div class="hero-stat">Uptime: <span id="uptime">—</span></div>
+                <div class="hero-stat">Predictions: <span id="pred-count">—</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metric Cards -->
+    <div class="metrics-grid fade-in">
+        <div class="card metric-card" id="mc-pm25">
+            <div class="metric-label">PM2.5</div>
+            <div><span class="metric-value" id="mv-pm25">—</span> <span class="metric-unit">µg/m³</span></div>
+            <div class="metric-spark"><canvas id="spark-pm25"></canvas></div>
+        </div>
+        <div class="card metric-card" id="mc-pm10">
+            <div class="metric-label">PM10</div>
+            <div><span class="metric-value" id="mv-pm10">—</span> <span class="metric-unit">µg/m³</span></div>
+            <div class="metric-spark"><canvas id="spark-pm10"></canvas></div>
+        </div>
+        <div class="card metric-card" id="mc-temp">
+            <div class="metric-label">Temperature</div>
+            <div><span class="metric-value" id="mv-temp">—</span> <span class="metric-unit">°C</span></div>
+            <div class="metric-spark"><canvas id="spark-temp"></canvas></div>
+        </div>
+        <div class="card metric-card" id="mc-humid">
+            <div class="metric-label">Humidity</div>
+            <div><span class="metric-value" id="mv-humid">—</span> <span class="metric-unit">%</span></div>
+            <div class="metric-spark"><canvas id="spark-humid"></canvas></div>
+        </div>
+        <div class="card metric-card" id="mc-mq">
+            <div class="metric-label">MQ Gas</div>
+            <div><span class="metric-value" id="mv-mq">—</span> <span class="metric-unit">V</span></div>
+            <div class="metric-spark"><canvas id="spark-mq"></canvas></div>
+        </div>
+        <div class="card metric-card" id="mc-alarm">
+            <div class="metric-label">Alarm Rate</div>
+            <div><span class="metric-value" id="mv-alarm">—</span> <span class="metric-unit">%</span></div>
+            <div class="metric-spark"><canvas id="spark-alarm"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-grid fade-in">
+        <div class="card chart-card">
+            <div class="chart-header">
+                <span class="chart-title">PM2.5 Concentration</span>
+                <span class="chart-value" id="cv-pm25">—</span>
+            </div>
+            <canvas id="chart-pm25"></canvas>
+        </div>
+        <div class="card chart-card">
+            <div class="chart-header">
+                <span class="chart-title">AQI Score</span>
+                <span class="chart-value" id="cv-aqi">—</span>
+            </div>
+            <canvas id="chart-aqi"></canvas>
+        </div>
+        <div class="card chart-card">
+            <div class="chart-header">
+                <span class="chart-title">MQ Gas Sensor</span>
+                <span class="chart-value" id="cv-mq">—</span>
+            </div>
+            <canvas id="chart-mq"></canvas>
+        </div>
+    </div>
+
+    <!-- Fire Event Log -->
+    <div class="card fire-log-card fade-in" id="fire-log-section">
+        <div class="fire-log-header">
+            <div class="fire-log-title"><span class="fire-dot"></span> Fire & Smoke Events</div>
+            <span class="fire-log-count" id="fire-log-count">0 events</span>
+        </div>
+        <div class="fire-event-list" id="fire-event-list">
+            <div class="fire-empty"><div class="fire-empty-icon">🛡️</div>No fire events recorded — system monitoring</div>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="card table-card fade-in">
+        <div class="table-header">
+            <span class="table-title">Recent Readings</span>
+            <span class="table-count" id="table-count">0 records</span>
+        </div>
+        <div class="table-scroll">
+            <table>
+                <thead>
+                    <tr>
+                        <th data-col="timestamp">Time <span class="sort-arrow">↕</span></th>
+                        <th data-col="pm25">PM2.5 <span class="sort-arrow">↕</span></th>
+                        <th data-col="pm10">PM10 <span class="sort-arrow">↕</span></th>
+                        <th data-col="aqi">AQI <span class="sort-arrow">↕</span></th>
+                        <th data-col="temperature">Temp °C <span class="sort-arrow">↕</span></th>
+                        <th data-col="humidity">Humidity % <span class="sort-arrow">↕</span></th>
+                        <th data-col="mq_analog">MQ (V) <span class="sort-arrow">↕</span></th>
+                        <th data-col="alarm">Alarm <span class="sort-arrow">↕</span></th>
+                        <th data-col="category">Category <span class="sort-arrow">↕</span></th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <tr><td colspan="9" class="no-data"><div class="no-data-icon">📡</div>Waiting for sensor data...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer fade-in">
+        <div class="footer-left">
+            <span class="footer-item">Ember AI <span>v1.0.0</span></span>
+            <span class="footer-item">Model: <span>DQN RL</span></span>
+            <span class="footer-item" id="footer-uptime">Uptime: <span>—</span></span>
+        </div>
+        <span>Deployed on Render.com</span>
+    </div>
+
 </div>
 
 <script>
-// ── Chart setup ──────────────────────────────────────────────
-const MAX_POINTS = 60;
+// ═══════════════════════════════════════════════════════════════
+// EMBER AI DASHBOARD — Real-time Data Engine
+// ═══════════════════════════════════════════════════════════════
 
-function makeChart(id, label, colour) {
-    const ctx = document.getElementById(id).getContext('2d');
+const MAX_POINTS = 60;
+const POLL_MS    = 2500;
+
+// ── AQI Color Mapping ──
+function aqiColor(aqi) {
+    if (aqi <= 50)  return '#22c55e';  // Good - green
+    if (aqi <= 100) return '#eab308';  // Moderate - yellow
+    if (aqi <= 150) return '#f97316';  // Sensitive - orange
+    if (aqi <= 200) return '#ef4444';  // Unhealthy - red
+    if (aqi <= 300) return '#a855f7';  // Very Unhealthy - purple
+    return '#dc2626';                  // Hazardous - deep red
+}
+
+function aqiGradient(aqi) {
+    if (aqi <= 50)  return 'linear-gradient(90deg, #22c55e, #4ade80)';
+    if (aqi <= 100) return 'linear-gradient(90deg, #22c55e, #eab308)';
+    if (aqi <= 150) return 'linear-gradient(90deg, #eab308, #f97316)';
+    if (aqi <= 200) return 'linear-gradient(90deg, #f97316, #ef4444)';
+    if (aqi <= 300) return 'linear-gradient(90deg, #ef4444, #a855f7)';
+    return 'linear-gradient(90deg, #a855f7, #dc2626)';
+}
+
+function categoryClass(cat) {
+    if (!cat) return '';
+    const c = cat.toUpperCase();
+    if (c.includes('GOOD'))        return 'cat-good';
+    if (c.includes('MODERATE'))    return 'cat-moderate';
+    if (c.includes('SENSITIVE'))   return 'cat-sensitive';
+    if (c.includes('VERY'))        return 'cat-very';
+    if (c.includes('UNHEALTHY'))   return 'cat-unhealthy';
+    if (c.includes('HAZARDOUS'))   return 'cat-hazardous';
+    return '';
+}
+
+// ── Sparkline Charts ──
+function createSparkline(canvasId, color) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return null;
+    return new Chart(ctx.getContext('2d'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ data: [], borderColor: color, borderWidth: 1.5, pointRadius: 0, fill: true, backgroundColor: color + '15', tension: 0.4 }] },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            scales: { x: { display: false }, y: { display: false } },
+            elements: { line: { borderCapStyle: 'round' } }
+        }
+    });
+}
+
+const sparks = {
+    pm25:  createSparkline('spark-pm25',  '#3b82f6'),
+    pm10:  createSparkline('spark-pm10',  '#8b5cf6'),
+    temp:  createSparkline('spark-temp',  '#f97316'),
+    humid: createSparkline('spark-humid', '#06b6d4'),
+    mq:    createSparkline('spark-mq',    '#22c55e'),
+    alarm: createSparkline('spark-alarm', '#ef4444'),
+};
+
+// ── Main Charts ──
+function createMainChart(canvasId, label, color) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 180);
+    gradient.addColorStop(0, color + '30');
+    gradient.addColorStop(1, color + '00');
+
     return new Chart(ctx, {
         type: 'line',
         data: {
@@ -240,35 +1025,60 @@ function makeChart(id, label, colour) {
             datasets: [{
                 label: label,
                 data: [],
-                borderColor: colour,
-                backgroundColor: colour + '22',
-                borderWidth: 1.5,
+                borderColor: color,
+                backgroundColor: gradient,
+                borderWidth: 2,
                 pointRadius: 0,
+                pointHoverRadius: 4,
+                pointHoverBackgroundColor: color,
                 fill: true,
-                tension: 0.3,
+                tension: 0.35,
             }]
         },
         options: {
+            responsive: true,
             animation: false,
-            plugins: { legend: { display: false } },
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#18181b',
+                    titleColor: '#a1a1aa',
+                    bodyColor: '#fafafa',
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    padding: 10,
+                    titleFont: { size: 11 },
+                    bodyFont: { size: 13, weight: '600' },
+                    displayColors: false,
+                }
+            },
             scales: {
                 x: {
-                    display: false,
+                    display: true,
+                    grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false },
+                    ticks: { color: '#52525b', font: { size: 10 }, maxRotation: 0, maxTicksLimit: 8 },
                 },
                 y: {
-                    grid:   { color: '#2a2a3a' },
-                    ticks:  { color: '#666', font: { size: 10 } },
+                    display: true,
+                    grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false },
+                    ticks: { color: '#52525b', font: { size: 10 }, maxTicksLimit: 5 },
+                    beginAtZero: true,
                 }
             }
         }
     });
 }
 
-const chartPM25 = makeChart('chartPM25', 'PM2.5', '#58a6ff');
-const chartAQI  = makeChart('chartAQI',  'AQI',   '#ff7b72');
-const chartMQ   = makeChart('chartMQ',   'MQ (V)', '#3fb950');
+const charts = {
+    pm25: createMainChart('chart-pm25', 'PM2.5', '#3b82f6'),
+    aqi:  createMainChart('chart-aqi',  'AQI',   '#f97316'),
+    mq:   createMainChart('chart-mq',   'MQ Gas', '#22c55e'),
+};
 
-function pushPoint(chart, label, value) {
+// ── Push data to chart ──
+function pushChart(chart, label, value) {
     chart.data.labels.push(label);
     chart.data.datasets[0].data.push(value);
     if (chart.data.labels.length > MAX_POINTS) {
@@ -278,97 +1088,300 @@ function pushPoint(chart, label, value) {
     chart.update('none');
 }
 
-// ── Alarm banner ─────────────────────────────────────────────
-function setAlarm(isOn, aqi, category) {
-    const banner = document.getElementById('alarm-banner');
-    const dot    = document.getElementById('alarm-dot');
-    const text   = document.getElementById('alarm-text');
-    const aqiEl  = document.getElementById('alarm-aqi');
-
-    if (isOn) {
-        banner.classList.add('danger');
-        dot.classList.add('danger');
-        text.textContent = 'DANGER DETECTED — ALARM ON';
-        text.style.color = '#ff6666';
-    } else {
-        banner.classList.remove('danger');
-        dot.classList.remove('danger');
-        text.textContent = 'AIR QUALITY: SAFE';
-        text.style.color = '#44cc66';
+function pushSpark(spark, value) {
+    if (!spark) return;
+    spark.data.labels.push('');
+    spark.data.datasets[0].data.push(value);
+    if (spark.data.labels.length > 30) {
+        spark.data.labels.shift();
+        spark.data.datasets[0].data.shift();
     }
-    aqiEl.textContent = aqi != null ? `AQI ${aqi.toFixed(1)} · ${category || ''}` : 'AQI — · —';
+    spark.update('none');
 }
 
-// ── Table ─────────────────────────────────────────────────────
-function updateTable(rows) {
+// ── Table Sorting ──
+let allRows = [];
+let sortCol = 'timestamp';
+let sortAsc = false;
+
+document.querySelectorAll('thead th[data-col]').forEach(th => {
+    th.addEventListener('click', () => {
+        const col = th.dataset.col;
+        if (sortCol === col) {
+            sortAsc = !sortAsc;
+        } else {
+            sortCol = col;
+            sortAsc = true;
+        }
+        document.querySelectorAll('thead th').forEach(h => h.classList.remove('sorted'));
+        th.classList.add('sorted');
+        th.querySelector('.sort-arrow').textContent = sortAsc ? '↑' : '↓';
+        renderTable();
+    });
+});
+
+function renderTable() {
     const tbody = document.getElementById('table-body');
-    if (!rows || rows.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="color:#555;text-align:center">No data yet</td></tr>';
+    if (!allRows.length) {
+        tbody.innerHTML = '<tr><td colspan="9" class="no-data"><div class="no-data-icon">📡</div>Waiting for sensor data...</td></tr>';
         return;
     }
-    const slice = rows.slice(0, 10);
-    tbody.innerHTML = slice.map(r => {
-        const isOn  = r.alarm === 'ON';
+
+    const sorted = [...allRows].sort((a, b) => {
+        let va = a[sortCol], vb = b[sortCol];
+        if (typeof va === 'string') return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+        return sortAsc ? (va - vb) : (vb - va);
+    });
+
+    const rows = sorted.slice(0, 25);
+    document.getElementById('table-count').textContent = `${allRows.length} records`;
+
+    tbody.innerHTML = rows.map(r => {
+        const isOn = r.alarm === 'ON';
         const badge = isOn
-            ? '<span class="badge badge-on">ON</span>'
-            : '<span class="badge badge-off">OFF</span>';
-        const time  = r.timestamp ? r.timestamp.slice(11, 19) : '—';
+            ? '<span class="badge badge-danger"><span class="badge-dot"></span>ON</span>'
+            : '<span class="badge badge-safe"><span class="badge-dot"></span>OFF</span>';
+        const time = r.timestamp ? r.timestamp.slice(11, 19) : '—';
+        const catClass = categoryClass(r.category);
+        const aqiCol = aqiColor(r.aqi || 0);
+        const catLabel = r.category ? r.category.replace(/_/g, ' ') : '—';
+
         return `<tr>
-            <td>${time}</td>
+            <td style="color:#71717a;font-variant-numeric:tabular-nums">${time}</td>
             <td>${r.pm25 != null ? r.pm25.toFixed(1) : '—'}</td>
-            <td>${r.aqi  != null ? r.aqi.toFixed(1)  : '—'}</td>
-            <td>${r.mq_analog != null ? r.mq_analog.toFixed(3) : '—'}</td>
+            <td>${r.pm10 != null ? r.pm10.toFixed(1) : '—'}</td>
+            <td class="aqi-cell" style="color:${aqiCol}">${r.aqi != null ? r.aqi.toFixed(0) : '—'}</td>
             <td>${r.temperature != null ? r.temperature.toFixed(1) : '—'}</td>
             <td>${r.humidity != null ? r.humidity.toFixed(1) : '—'}</td>
+            <td>${r.mq_analog != null ? (r.mq_analog * 3.3).toFixed(3) : '—'}</td>
             <td>${badge}</td>
-            <td style="color:#888;font-size:0.72rem">${r.category || '—'}</td>
+            <td><span class="category-text ${catClass}">${catLabel}</span></td>
         </tr>`;
     }).join('');
 }
 
-// ── Polling ───────────────────────────────────────────────────
+// ── Update Hero Card ──
+function updateHero(latest) {
+    const aqi = latest.aqi || 0;
+    const isAlarm = latest.alarm === 'ON';
+    const color = aqiColor(aqi);
+    const category = latest.category ? latest.category.replace(/_/g, ' ') : 'UNKNOWN';
+
+    document.getElementById('aqi-number').textContent = Math.round(aqi);
+    document.getElementById('aqi-number').style.color = color;
+    document.getElementById('aqi-category').textContent = category;
+    document.getElementById('aqi-fraction').textContent = `${Math.round(aqi)} / 500`;
+
+    const bar = document.getElementById('aqi-bar');
+    bar.style.width = Math.min(aqi / 500 * 100, 100) + '%';
+    bar.style.background = aqiGradient(aqi);
+
+    const hero = document.getElementById('hero-card');
+    const alarm = document.getElementById('alarm-status');
+    const alarmText = document.getElementById('alarm-text');
+
+    if (isAlarm) {
+        hero.classList.add('danger');
+        alarm.classList.add('danger');
+        alarmText.textContent = 'DANGER — ALARM ACTIVE';
+        hero.style.setProperty('--green-glow', 'rgba(239,68,68,0.15)');
+    } else {
+        hero.classList.remove('danger');
+        alarm.classList.remove('danger');
+        alarmText.textContent = 'AIR QUALITY SAFE';
+    }
+
+    if (latest.device_id && latest.device_id !== 'unknown') {
+        document.getElementById('device-id').textContent = latest.device_id;
+    }
+}
+
+// ── Update Metric Cards ──
+function updateMetrics(latest, rows) {
+    const set = (id, val) => { document.getElementById(id).textContent = val; };
+
+    set('mv-pm25',  latest.pm25 != null ? latest.pm25.toFixed(1) : '—');
+    set('mv-pm10',  latest.pm10 != null ? latest.pm10.toFixed(1) : '—');
+    set('mv-temp',  latest.temperature != null ? latest.temperature.toFixed(1) : '—');
+    set('mv-humid', latest.humidity != null ? latest.humidity.toFixed(1) : '—');
+    set('mv-mq',    latest.mq_analog != null ? (latest.mq_analog * 3.3).toFixed(3) : '—');
+
+    // Alarm rate (% of last 50 readings that were ON)
+    const alarmCount = rows.filter(r => r.alarm === 'ON').length;
+    const alarmRate = rows.length > 0 ? (alarmCount / rows.length * 100).toFixed(0) : '0';
+    set('mv-alarm', alarmRate);
+
+    // Chart value labels
+    set('cv-pm25', latest.pm25 != null ? latest.pm25.toFixed(1) + ' µg/m³' : '—');
+    set('cv-aqi',  latest.aqi != null ? Math.round(latest.aqi).toString() : '—');
+    set('cv-mq',   latest.mq_analog != null ? (latest.mq_analog * 3.3).toFixed(3) + ' V' : '—');
+}
+
+// ── Polling Engine ──
 let lastId = null;
 
 async function poll() {
     try {
-        const res  = await fetch('/history');
+        const res = await fetch('/history');
         const data = await res.json();
         const rows = data.predictions || [];
+        if (!rows.length) return;
 
-        if (rows.length === 0) return;
+        allRows = rows;
 
-        // Push only NEW points to charts (avoid duplicates)
+        const latest = rows[0];
+        updateHero(latest);
+        updateMetrics(latest, rows);
+
+        // Push only NEW points to charts
         const newRows = lastId == null
-            ? rows.slice(0, 60).reverse()
+            ? rows.slice(0, MAX_POINTS).reverse()
             : rows.filter(r => r.id > lastId).reverse();
 
         for (const r of newRows) {
             const label = r.timestamp ? r.timestamp.slice(11, 19) : '';
-            pushPoint(chartPM25, label, r.pm25  ?? 0);
-            pushPoint(chartAQI,  label, r.aqi   ?? 0);
-            pushPoint(chartMQ,   label, r.mq_analog ?? 0);
+            pushChart(charts.pm25, label, r.pm25 || 0);
+            pushChart(charts.aqi,  label, r.aqi  || 0);
+            pushChart(charts.mq,   label, (r.mq_analog || 0) * 3.3);
+
+            pushSpark(sparks.pm25,  r.pm25 || 0);
+            pushSpark(sparks.pm10,  r.pm10 || 0);
+            pushSpark(sparks.temp,  r.temperature || 0);
+            pushSpark(sparks.humid, r.humidity || 0);
+            pushSpark(sparks.mq,    (r.mq_analog || 0) * 3.3);
+            pushSpark(sparks.alarm, r.alarm === 'ON' ? 1 : 0);
         }
 
-        if (rows.length > 0) lastId = rows[0].id;
+        if (rows.length > 0) {
+            lastId = Math.max(...rows.map(r => r.id));
+        }
 
-        // Update alarm from latest row
-        const latest = rows[0];
-        setAlarm(latest.alarm === 'ON', latest.aqi, latest.category);
+        renderTable();
 
-        updateTable(rows);
-        document.getElementById('last-update').textContent =
-            'Last update: ' + new Date().toLocaleTimeString();
+        const now = new Date().toLocaleTimeString();
+        document.getElementById('last-update').textContent = `Updated ${now}`;
 
     } catch (e) {
-        document.getElementById('last-update').textContent =
-            'Last update: error — ' + e.message;
+        console.error('Poll error:', e);
     }
 }
 
-// Start polling immediately, then every 2.5s
-poll();
-setInterval(poll, 2500);
-</script>
+// ── Status Polling ──
+async function pollStatus() {
+    try {
+        const res = await fetch('/status');
+        const data = await res.json();
+        if (data.uptime_seconds != null) {
+            const h = Math.floor(data.uptime_seconds / 3600);
+            const m = Math.floor((data.uptime_seconds % 3600) / 60);
+            const uptimeStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
+            document.getElementById('uptime').textContent = uptimeStr;
+            document.getElementById('footer-uptime').innerHTML = `Uptime: <span>${uptimeStr}</span>`;
+        }
+        if (data.total_predictions != null) {
+            document.getElementById('pred-count').textContent = data.total_predictions.toLocaleString();
+        }
+    } catch (e) {
+        // Status endpoint unavailable
+    }
+}
 
+// ── Fire Alert Polling ──
+async function pollFireState() {
+    try {
+        // Check device state for active fire alert
+        const stateRes = await fetch('/device_state?device_id=K64F-ember');
+        const state = await stateRes.json();
+
+        const banner = document.getElementById('fire-banner');
+
+        if (state.fire_alert) {
+            banner.classList.add('active');
+            document.getElementById('fire-score').textContent =
+                state.fire_score != null ? (state.fire_score * 100).toFixed(0) + '%' : '—';
+            document.getElementById('fire-time').textContent =
+                state.fire_time || '—';
+        } else {
+            banner.classList.remove('active');
+        }
+    } catch (e) {
+        // Fire state endpoint unavailable
+    }
+}
+
+async function clearFireAlert() {
+    try {
+        await fetch('/fire_clear', { method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({device_id: 'K64F-ember'})
+        });
+        document.getElementById('fire-banner').classList.remove('active');
+    } catch (e) { console.error('Failed to clear fire alert:', e); }
+}
+
+async function pollFireLog() {
+    try {
+        const res = await fetch('/fire_log');
+        const data = await res.json();
+        const log = data.log || [];
+
+        const listEl = document.getElementById('fire-event-list');
+        const countEl = document.getElementById('fire-log-count');
+        countEl.textContent = log.length + ' event' + (log.length !== 1 ? 's' : '');
+
+        if (!log.length) {
+            listEl.innerHTML = '<div class="fire-empty"><div class="fire-empty-icon">🛡️</div>No fire events recorded — system monitoring</div>';
+            return;
+        }
+
+        // Show most recent first
+        const reversed = [...log].reverse();
+        listEl.innerHTML = reversed.map(entry => {
+            const d = entry.data || {};
+            const time = entry.received_at || '—';
+            const score = d.fire_score != null ? (d.fire_score * 100).toFixed(0) + '%' : '—';
+            const pmD  = d.pm_delta != null ? d.pm_delta.toFixed(1) : '—';
+            const mqD  = d.mq_delta != null ? d.mq_delta.toFixed(4) : '—';
+            const tmpD = d.temp_delta != null ? d.temp_delta.toFixed(1) : '—';
+            const pm25 = d.pm2_5 != null ? d.pm2_5 : (d.pm25 != null ? d.pm25 : '—');
+            const temp = d.temperature != null ? d.temperature.toFixed(1) : '—';
+            const mq   = d.mq_analog != null ? d.mq_analog.toFixed(4) : '—';
+
+            return `<div class="fire-event-item">
+                <div class="fire-event-time">${time}</div>
+                <div class="fire-event-score">${score}</div>
+                <div class="fire-event-deltas">
+                    PM Δ <span>${pmD}</span> · Gas Δ <span>${mqD}</span> · Temp Δ <span>${tmpD}°C</span>
+                </div>
+                <div class="fire-event-sensors">
+                    PM2.5 <span>${pm25}</span> · T <span>${temp}°C</span> · MQ <span>${mq}V</span>
+                </div>
+            </div>`;
+        }).join('');
+
+        // Update banner with latest fire event details
+        if (reversed.length > 0) {
+            const latest = reversed[0].data || {};
+            if (latest.pm_delta != null) document.getElementById('fire-pm-delta').textContent = latest.pm_delta.toFixed(1);
+            if (latest.mq_delta != null) document.getElementById('fire-mq-delta').textContent = latest.mq_delta.toFixed(4);
+            if (latest.temp_delta != null) document.getElementById('fire-temp-delta').textContent = latest.temp_delta.toFixed(1) + '°C';
+        }
+
+    } catch (e) {
+        // Fire log endpoint unavailable
+    }
+}
+
+// ── Start ──
+poll();
+pollStatus();
+pollFireState();
+pollFireLog();
+setInterval(poll, POLL_MS);
+setInterval(pollStatus, 15000);
+setInterval(pollFireState, 3000);
+setInterval(pollFireLog, 5000);
+
+</script>
 </body>
 </html>
