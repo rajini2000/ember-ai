@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(pip install flask flask-cors gunicorn requests)",
-      "Bash(pip install flask flask-cors requests stable-baselines3)"
-    ]
-  }
-}

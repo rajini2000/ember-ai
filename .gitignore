@@ -36,3 +36,21 @@ results/logs/
 .DS_Store
 Thumbs.db
 docs/extra.txt
+
+# Claude internal memory — never push
+.claude/
+
+# Unnecessary folders
+k64f/
+docs/
+ember_complete/
+ember-air-quality-monitor-master/
+m1_firmware/
+m1_firmware.zip
+
+# Log and database files
+server_log.txt
+predictions.db
+
+# PDFs
+*.pdf
