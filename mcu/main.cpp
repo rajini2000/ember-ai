@@ -89,6 +89,14 @@ DigitalIn mq_digital(PTB3);  // DO pin - digital threshold alert
 // Alarm output (HIGH = on, LOW = off)
 DigitalOut alarm(PTA2, 0);   // Start with alarm off
 
+// ========== DIGITAL TWIN: Buzzer cable feedback ==========
+// Wire from buzzer return terminal → PTA1 (D3) with PullDown
+// When cable connected + alarm HIGH: feedback reads HIGH
+// When cable disconnected: feedback reads LOW (PullDown)
+DigitalIn buzzer_feedback(PTA1, PullDown);
+static bool buzzer_cable_connected = true;   // assume connected at boot
+static bool buzzer_cable_last_state = true;
+
 // OLED page button (external 2-pin switch: Pin1→PTC2(D6), Pin2→GND)
 // Using DigitalIn polling instead of InterruptIn for reliability
 DigitalIn oled_btn_pin(PTC2, PullUp);
@@ -146,6 +154,10 @@ static const int TEST_ALARM_DURATION_MS = 3000;
 // ========== M5: Fire Alert State ==========
 static bool fire_alert_active = false;       // FIRE ALERT mode active
 static bool fire_alert_sent = false;         // HTTP POST sent for current event
+
+// ========== DIGITAL TWIN: State sync ==========
+static bool dt_status_pending = false;       // flag to send status on next cycle
+static const char* dt_pending_cause = "";   // cause string for pending status
 
 // MicroSD Card (SPI) - lower frequency for compatibility
 SDBlockDevice sd(PTD2, PTD3, PTD1, PTD0, 400000);  // MOSI, MISO, SCK, CS, 400kHz
@@ -2182,6 +2194,72 @@ void oled_invert_rect(int x, int y, int w, int h) {
             oled_pixel(i, j, true);
 }
 
+// ========== DIGITAL TWIN: Push device status to server ==========
+// POSTs current alarm state to /device_status so the web control panel
+// can sync its toggle switch, show cause text, and reflect cable state.
+void sendDeviceStatusToAPI(bool armed, bool active, const char* cause) {
+    if (!wifi_connected || softap_mode) return;
+
+    char body[256];
+    int body_len = snprintf(body, sizeof(body),
+        "{\"device_id\":\"K64F-ember\","
+        "\"alarm_armed\":%s,"
+        "\"alarm_active\":%s,"
+        "\"buzzer_connected\":%s,"
+        "\"fire_alert\":%s,"
+        "\"cause\":\"%s\"}",
+        armed ? "true" : "false",
+        active ? "true" : "false",
+        buzzer_cable_connected ? "true" : "false",
+        fire_alert_active ? "true" : "false",
+        cause);
+
+    char cmd[256];
+    snprintf(cmd, sizeof(cmd),
+        "AT+HTTPCPOST=\"https://%s/device_status\",%d,1,\"Content-Type: application/json\"",
+        AI_SERVER_HOST, body_len);
+
+    { char junk[256]; while (esp.readable()) { esp.read(junk, sizeof(junk)); ThisThread::sleep_for(5ms); } }
+
+    esp.write(cmd, strlen(cmd));
+    esp.write("\r\n", 2);
+
+    Timer t;
+    t.start();
+    bool found_prompt = false;
+    while (t.elapsed_time() < 3s) {
+        if (esp.readable()) {
+            char c;
+            if (esp.read(&c, 1) == 1 && c == '>') { found_prompt = true; break; }
+        } else {
+            ThisThread::sleep_for(5ms);
+        }
+    }
+    if (!found_prompt) return;
+
+    esp.write(body, body_len);
+
+    char resp[256];
+    memset(resp, 0, sizeof(resp));
+    int total = 0;
+    t.reset();
+    while (t.elapsed_time() < 3s && total < (int)sizeof(resp) - 1) {
+        if (esp.readable()) {
+            int n = esp.read(resp + total, sizeof(resp) - 1 - total);
+            if (n > 0) total += n;
+            if (strstr(resp, "\r\nOK") || strstr(resp, "ERROR")) break;
+        } else {
+            ThisThread::sleep_for(10ms);
+        }
+    }
+
+    char pmsg[128];
+    snprintf(pmsg, sizeof(pmsg), "[DT-SYNC] Status sent: armed=%s active=%s cable=%s cause=%s\r\n",
+        armed ? "Y" : "N", active ? "Y" : "N",
+        buzzer_cable_connected ? "Y" : "N", cause);
+    pc_print(pmsg);
+}
+
 // ========== M5: FIRE ALERT — HTTP POST & SD BASELINE LOG ==========
 
 void sendFireAlertToAPI(float score, float pm_delta, float mq_delta, float temp_delta) {
@@ -3139,6 +3217,7 @@ int main() {
             btn_alarm_dismiss = false;
             alarm = 0;
             alarm_active = false;
+            alarm_armed = false;  // DIGITAL TWIN: disarm on physical dismiss
             // M5: also clear fire alert if active
             if (fire_alert_active) {
                 fire_alert_active = false;
@@ -3151,6 +3230,8 @@ int main() {
             alarm_cooldown_timer.start();
             if (oled_available) oled_cmd(0xA6); // normal display
             pc_print("\r\n[ALARM] Manually dismissed by 3-press (30s cooldown)\r\n");
+            // DIGITAL TWIN: notify server so web panel updates toggle
+            sendDeviceStatusToAPI(false, false, "button_dismiss");
             oled_update();
             ThisThread::sleep_for(2s);
             continue;
@@ -3214,7 +3295,41 @@ int main() {
             if (alarm_cooldown_timer.elapsed_time() >= std::chrono::seconds(ALARM_COOLDOWN_SEC)) {
                 alarm_cooldown_active = false;
                 alarm_cooldown_timer.stop();
-                pc_print("[ALARM] Cooldown expired, alarm re-enabled\r\n");
+                alarm_armed = true;  // DIGITAL TWIN: re-arm after cooldown
+                pc_print("[ALARM] Cooldown expired, alarm re-armed\r\n");
+                // DIGITAL TWIN: notify server so web panel updates toggle back to ARMED
+                sendDeviceStatusToAPI(true, false, "cooldown_rearmed");
+            }
+        }
+
+        // ========== DIGITAL TWIN: Buzzer cable detection ==========
+        // Drive alarm pin HIGH briefly to test cable, then restore
+        {
+            bool was_on = alarm.read();
+            if (!was_on) {
+                alarm = 1;                     // pulse HIGH to test
+                ThisThread::sleep_for(1ms);    // settle time
+            }
+            bool feedback = buzzer_feedback.read();
+            if (!was_on) alarm = 0;            // restore if was off
+
+            bool cable_now = (feedback == 1);  // HIGH = cable connected
+            if (cable_now != buzzer_cable_last_state) {
+                buzzer_cable_last_state = cable_now;
+                buzzer_cable_connected = cable_now;
+                if (!cable_now) {
+                    // Cable just disconnected
+                    alarm_armed = false;
+                    alarm_active = false;
+                    alarm = 0;
+                    pc_print("[DT-CABLE] Buzzer cable DISCONNECTED — alarm disarmed\r\n");
+                    sendDeviceStatusToAPI(false, false, "cable_disconnected");
+                } else {
+                    // Cable reconnected
+                    alarm_armed = true;
+                    pc_print("[DT-CABLE] Buzzer cable RECONNECTED — alarm re-armed\r\n");
+                    sendDeviceStatusToAPI(true, false, "cable_reconnected");
+                }
             }
         }
 

@@ -168,6 +168,8 @@ a.back:hover{color:var(--text)}
         <span class="toggle-text right">ARM</span>
       </div>
       <div class="arm-status armed" id="armStatus">ARMED</div>
+      <div id="armCause" style="font-size:12px;color:var(--text-muted);margin-top:8px"></div>
+      <div id="cableStatus" style="margin-top:10px;font-size:13px;font-weight:600"></div>
     </div>
 
     <!-- Test Alarm -->
@@ -264,17 +266,62 @@ function showToast(msg, type='success') {
 }
 
 // ── Arm / Disarm ──────────────────────────────────────────
+let ignoreNextToggle = false;  // prevent feedback loop when syncing from server
+
 document.getElementById('armToggle').addEventListener('change', function() {
+  if (ignoreNextToggle) { ignoreNextToggle = false; return; }
   const armed = this.checked;
   lastArmState = armed;
-  updateArmUI(armed);
+  updateArmUI(armed, armed ? '' : 'web_panel');
   sendCommand({ arm: armed });
 });
 
-function updateArmUI(armed) {
+function updateArmUI(armed, cause) {
   const el = document.getElementById('armStatus');
   el.textContent = armed ? 'ARMED' : 'DISARMED';
   el.className = 'arm-status ' + (armed ? 'armed' : 'disarmed');
+
+  // Show cause text
+  const causeEl = document.getElementById('armCause');
+  if (cause === 'button_dismiss')      causeEl.textContent = '⚡ Disarmed by physical 3-press button';
+  else if (cause === 'cable_disconnected') causeEl.textContent = '🔌 Buzzer cable disconnected';
+  else if (cause === 'cable_reconnected')  causeEl.textContent = '✅ Cable reconnected — re-armed';
+  else if (cause === 'cooldown_rearmed')   causeEl.textContent = '🔄 Auto re-armed after cooldown';
+  else if (cause === 'web_panel')          causeEl.textContent = '🌐 Changed from web panel';
+  else causeEl.textContent = '';
+}
+
+// ── Poll Device Hardware State (Digital Twin Sync) ────────
+async function fetchDeviceHWState() {
+  try {
+    const res = await fetch(API + '/device_hw_state?device_id=' + DEVICE);
+    if (!res.ok) return;
+    const hw = await res.json();
+
+    // Sync arm toggle if server state differs from UI
+    const toggle = document.getElementById('armToggle');
+    const serverArmed = hw.alarm_armed === true;
+    if (toggle.checked !== serverArmed) {
+      ignoreNextToggle = true;
+      toggle.checked = serverArmed;
+      lastArmState = serverArmed;
+      updateArmUI(serverArmed, hw.cause || '');
+    } else if (hw.cause) {
+      // Update cause text even if toggle matches
+      updateArmUI(serverArmed, hw.cause);
+    }
+
+    // Cable status indicator
+    const cableEl = document.getElementById('cableStatus');
+    if (hw.buzzer_connected === false) {
+      cableEl.innerHTML = '<span style="color:var(--red)">🔌 BUZZER CABLE DISCONNECTED</span>';
+    } else if (hw.buzzer_connected === true) {
+      cableEl.innerHTML = '<span style="color:var(--green)">🔗 Buzzer Connected</span>';
+    } else {
+      cableEl.innerHTML = '';
+    }
+
+  } catch(e) { /* silent */ }
 }
 
 // ── Sliders ───────────────────────────────────────────────
@@ -412,9 +459,11 @@ async function fetchLog() {
 fetchStatus();
 fetchSensors();
 fetchLog();
+fetchDeviceHWState();
 setInterval(fetchSensors, 3000);
 setInterval(fetchStatus, 15000);
 setInterval(fetchLog, 10000);
+setInterval(fetchDeviceHWState, 2000);  // Digital Twin sync every 2s
 </script>
 </body>
 </html>

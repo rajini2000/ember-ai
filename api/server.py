@@ -406,6 +406,91 @@ def get_device_state_endpoint():
 
 
 # ---------------------------------------------------------------------------
+# DIGITAL TWIN: POST /device_status — K64F pushes its hardware state
+# ---------------------------------------------------------------------------
+# Stores the MCU's reported alarm armed/active state, buzzer cable status,
+# and the cause of the last state change. The control panel polls /device_state
+# to sync the ARM toggle switch and show status messages in real-time.
+device_hw_state = {}   # per-device hardware state reported by MCU
+
+@app.route('/device_status', methods=['POST'])
+def post_device_status():
+    """
+    K64F posts its current hardware state for Digital Twin sync.
+
+    Body:
+    {
+        "device_id":         "K64F-ember",
+        "alarm_armed":       false,
+        "alarm_active":      false,
+        "buzzer_connected":  true,
+        "fire_alert":        false,
+        "cause":             "button_dismiss"
+    }
+
+    Causes: "button_dismiss", "cooldown_rearmed", "cable_disconnected",
+            "cable_reconnected", "fire_triggered", "web_panel"
+    """
+    if not request.is_json:
+        return jsonify({'error': 'JSON required'}), 400
+
+    data = request.get_json()
+    device_id = data.get('device_id', 'K64F-ember')
+
+    with _config_lock:
+        device_hw_state[device_id] = {
+            'alarm_armed':      data.get('alarm_armed', True),
+            'alarm_active':     data.get('alarm_active', False),
+            'buzzer_connected': data.get('buzzer_connected', True),
+            'fire_alert':       data.get('fire_alert', False),
+            'cause':            data.get('cause', ''),
+            'updated_at':       datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC'),
+        }
+
+        # Also update device_state for dashboard consistency
+        if device_id not in device_state:
+            device_state[device_id] = {}
+        device_state[device_id].update(device_hw_state[device_id])
+
+        # Log the state change
+        entry = {
+            'time':      datetime.now(timezone.utc).strftime('%H:%M:%S'),
+            'device_id': device_id,
+            'command':   {'hw_status': data.get('cause', 'unknown'),
+                          'armed': data.get('alarm_armed'),
+                          'cable': data.get('buzzer_connected')},
+        }
+        command_log.append(entry)
+        if len(command_log) > MAX_LOG:
+            command_log.pop(0)
+
+    cause = data.get('cause', '?')
+    armed = data.get('alarm_armed', '?')
+    cable = data.get('buzzer_connected', '?')
+    print(f"[DT-SYNC] {device_id}: armed={armed} cable={cable} cause={cause}")
+
+    return jsonify({'status': 'received', 'device_id': device_id}), 200
+
+
+# ---------------------------------------------------------------------------
+# DIGITAL TWIN: GET /device_hw_state — returns MCU-reported hardware state
+# ---------------------------------------------------------------------------
+@app.route('/device_hw_state', methods=['GET'])
+def get_device_hw_state():
+    did = request.args.get('device_id', 'K64F-ember')
+    with _config_lock:
+        state = device_hw_state.get(did, {
+            'alarm_armed': True,
+            'alarm_active': False,
+            'buzzer_connected': True,
+            'fire_alert': False,
+            'cause': '',
+            'updated_at': ''
+        })
+    return jsonify(state), 200
+
+
+# ---------------------------------------------------------------------------
 # M4: GET /command_log — last 20 commands for control panel
 # ---------------------------------------------------------------------------
 @app.route('/command_log', methods=['GET'])
