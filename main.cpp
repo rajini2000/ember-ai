@@ -112,6 +112,7 @@ static bool oled_auto_started = false;
 // OLED arm/disarm overlay: show status for 2 seconds after button press
 static bool oled_arm_overlay = false;
 static Timer oled_arm_overlay_timer;
+static bool oled_arm_overlay_requested = false;  // set by pollRemoteConfig, handled in main loop
 
 // Poll button for falling-edge detection (call frequently)
 static void poll_button() {
@@ -551,6 +552,8 @@ void pollRemoteConfig() {
                     pc_print("[M4-CONFIG] Alarm re-engaged (AQI high)\r\n");
                 }
             }
+            // Request OLED overlay (handled in main loop where OLED functions are in scope)
+            oled_arm_overlay_requested = true;
         }
     }
 
@@ -3236,6 +3239,25 @@ int main() {
             sendDeviceStatusToAPI(alarm_armed, alarm_active, alarm_armed ? "button_armed" : "button_disarmed");
 
             // Show arm/disarm status on OLED for 2 seconds
+            if (oled_available) {
+                oled_clear();
+                oled_str_med_c(10, "================");
+                if (alarm_armed) {
+                    oled_str_med_c(30, "  ALARM ARMED");
+                } else {
+                    oled_str_med_c(30, "ALARM DISARMED");
+                }
+                oled_str_med_c(50, "================");
+                oled_flush();
+                oled_arm_overlay = true;
+                oled_arm_overlay_timer.reset();
+                oled_arm_overlay_timer.start();
+            }
+        }
+
+        // Show arm/disarm overlay if requested by pollRemoteConfig (web panel)
+        if (oled_arm_overlay_requested) {
+            oled_arm_overlay_requested = false;
             if (oled_available) {
                 oled_clear();
                 oled_str_med_c(10, "================");
