@@ -32,9 +32,21 @@ def init_db():
             alarm       TEXT    NOT NULL,
             aqi         REAL,
             category    TEXT,
-            raw_input   TEXT
+            raw_input   TEXT,
+            pm1_0       REAL,
+            tvoc        REAL,
+            eco2        REAL,
+            pressure    REAL,
+            gas_resistance REAL
         )
     ''')
+    # Migration: add columns that may not exist in older databases
+    for col, ctype in [('pm1_0', 'REAL'), ('tvoc', 'REAL'), ('eco2', 'REAL'),
+                        ('pressure', 'REAL'), ('gas_resistance', 'REAL')]:
+        try:
+            c.execute(f'ALTER TABLE predictions ADD COLUMN {col} {ctype}')
+        except sqlite3.OperationalError:
+            pass  # column already exists
     conn.commit()
     conn.close()
 
@@ -53,8 +65,9 @@ def log_prediction(sensor_data: dict, result: dict, device_id: str = 'unknown'):
     c.execute('''
         INSERT INTO predictions
             (timestamp, device_id, pm25, pm10, temperature, humidity, mq_analog,
-             alarm, aqi, category, raw_input)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             alarm, aqi, category, raw_input,
+             pm1_0, tvoc, eco2, pressure, gas_resistance)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
         device_id,
@@ -67,6 +80,11 @@ def log_prediction(sensor_data: dict, result: dict, device_id: str = 'unknown'):
         result['aqi_estimate'],
         result['category'],
         json.dumps(sensor_data),
+        float(sensor_data.get('PM1.0',       0)),
+        float(sensor_data.get('TVOC',        0)),
+        float(sensor_data.get('eCO2',        0)),
+        float(sensor_data.get('pressure',    0)),
+        float(sensor_data.get('gas',         0)),
     ))
     conn.commit()
     conn.close()
@@ -86,7 +104,8 @@ def get_history(limit: int = 50, device_id: str = None) -> list:
     if device_id:
         c.execute('''
             SELECT id, timestamp, device_id, pm25, pm10, temperature, humidity,
-                   mq_analog, alarm, aqi, category
+                   mq_analog, alarm, aqi, category,
+                   pm1_0, tvoc, eco2, pressure, gas_resistance
             FROM   predictions
             WHERE  device_id = ?
             ORDER  BY id DESC
@@ -95,7 +114,8 @@ def get_history(limit: int = 50, device_id: str = None) -> list:
     else:
         c.execute('''
             SELECT id, timestamp, device_id, pm25, pm10, temperature, humidity,
-                   mq_analog, alarm, aqi, category
+                   mq_analog, alarm, aqi, category,
+                   pm1_0, tvoc, eco2, pressure, gas_resistance
             FROM   predictions
             ORDER  BY id DESC
             LIMIT  ?

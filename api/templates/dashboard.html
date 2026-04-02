@@ -561,6 +561,14 @@
         }
         @media (max-width: 800px) { .control-grid { grid-template-columns: 1fr; } }
 
+        .control-wide {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        @media (max-width: 800px) { .control-wide { grid-template-columns: 1fr; } }
+
         .control-card {
             padding: 20px 24px;
             display: flex;
@@ -750,6 +758,7 @@
             display: flex;
             gap: 10px;
             align-items: center;
+            flex-wrap: wrap;
         }
 
         .sim-send-btn {
@@ -795,6 +804,36 @@
             font-size: 0.72rem;
             color: var(--text-dim);
             margin-left: 12px;
+        }
+
+        /* ── Config Panel ── */
+        .config-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        @media (max-width: 800px) { .config-row { grid-template-columns: repeat(2, 1fr); } }
+
+        .config-send-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 24px;
+            border: 1px solid rgba(168,85,247,0.3);
+            border-radius: 8px;
+            background: rgba(168,85,247,0.08);
+            color: var(--purple);
+            font-size: 0.82rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .config-send-btn:hover {
+            background: rgba(168,85,247,0.15);
+            border-color: rgba(168,85,247,0.5);
         }
     </style>
 </head>
@@ -875,6 +914,98 @@
                 <span class="oled-dot" id="oled-dot-1"></span>
                 <span class="oled-dot" id="oled-dot-2"></span>
                 <span class="oled-dot" id="oled-dot-3"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration + Simulation (side by side) -->
+    <div class="control-wide fade-in">
+        <!-- Device Configuration -->
+        <div class="card sim-panel">
+            <div class="sim-title">&#x2699;&#xFE0F; Device Configuration</div>
+            <div class="config-row">
+                <div class="sim-field">
+                    <label>AQI Trigger (≥)</label>
+                    <input type="number" id="cfg-trigger" value="151" min="50" max="500" step="1">
+                </div>
+                <div class="sim-field">
+                    <label>AQI Clear (&lt;)</label>
+                    <input type="number" id="cfg-clear" value="100" min="20" max="300" step="1">
+                </div>
+                <div class="sim-field">
+                    <label>Debounce Cycles</label>
+                    <input type="number" id="cfg-debounce" value="3" min="1" max="10" step="1">
+                </div>
+                <div class="sim-field">
+                    <label>Cooldown (sec)</label>
+                    <input type="number" id="cfg-cooldown" value="30" min="5" max="300" step="5">
+                </div>
+            </div>
+            <div class="sim-actions">
+                <button class="config-send-btn" onclick="sendConfig()">&#x1F4E4; Send Config</button>
+                <span class="sim-status" id="cfg-status"></span>
+            </div>
+        </div>
+        <!-- Simulation Data Input -->
+        <div class="card sim-panel">
+            <div class="sim-title">&#x1F9EA; Simulation Data Input</div>
+            <div class="sim-grid">
+                <div class="sim-field">
+                    <label>PM1.0 (µg/m³)</label>
+                    <input type="number" id="sim-pm10s" value="5" min="0" max="1000" step="1">
+                </div>
+                <div class="sim-field">
+                    <label>PM2.5 (µg/m³)</label>
+                    <input type="number" id="sim-pm25" value="12" min="0" max="1000" step="1">
+                </div>
+                <div class="sim-field">
+                    <label>PM10 (µg/m³)</label>
+                    <input type="number" id="sim-pm10" value="20" min="0" max="1000" step="1">
+                </div>
+                <div class="sim-field">
+                    <label>TVOC (ppb)</label>
+                    <input type="number" id="sim-tvoc" value="50" min="0" max="5000" step="1">
+                </div>
+                <div class="sim-field">
+                    <label>eCO2 (ppm)</label>
+                    <input type="number" id="sim-eco2" value="400" min="0" max="10000" step="1">
+                </div>
+                <div class="sim-field">
+                    <label>Temperature (°C)</label>
+                    <input type="number" id="sim-temp" value="22.5" min="-40" max="80" step="0.1">
+                </div>
+                <div class="sim-field">
+                    <label>Humidity (%)</label>
+                    <input type="number" id="sim-humid" value="45" min="0" max="100" step="0.1">
+                </div>
+                <div class="sim-field">
+                    <label>Pressure (hPa)</label>
+                    <input type="number" id="sim-press" value="1013" min="800" max="1200" step="0.1">
+                </div>
+                <div class="sim-field">
+                    <label>Gas Resistance (Ω)</label>
+                    <input type="number" id="sim-gas" value="50000" min="0" max="500000" step="100">
+                </div>
+                <div class="sim-field">
+                    <label>MQ Analog (0-1)</label>
+                    <input type="number" id="sim-mq" value="0.15" min="0" max="1" step="0.001">
+                </div>
+                <div class="sim-field">
+                    <label>MQ Digital</label>
+                    <select id="sim-mqd">
+                        <option value="1" selected>1 (OK)</option>
+                        <option value="0">0 (ALERT)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="sim-actions">
+                <button class="sim-send-btn" onclick="sendSimulation()">&#x1F4E1; Send Simulation</button>
+                <button class="sim-preset-btn" onclick="loadPreset('clean')">Clean Air</button>
+                <button class="sim-preset-btn" onclick="loadPreset('moderate')">Moderate</button>
+                <button class="sim-preset-btn" onclick="loadPreset('unhealthy')">Unhealthy</button>
+                <button class="sim-preset-btn" onclick="loadPreset('hazardous')">Hazardous</button>
+                <button class="sim-preset-btn" onclick="loadPreset('fire')">&#x1F525; Fire Sim</button>
+                <span class="sim-status" id="sim-status"></span>
             </div>
         </div>
     </div>
@@ -963,69 +1094,6 @@
                     <tr><td colspan="9" class="no-data"><div class="no-data-icon">📡</div>Waiting for sensor data...</td></tr>
                 </tbody>
             </table>
-        </div>
-    </div>
-
-    <!-- Simulation Data Input Panel -->
-    <div class="card sim-panel fade-in">
-        <div class="sim-title">&#x1F9EA; Simulation Data Input</div>
-        <div class="sim-grid">
-            <div class="sim-field">
-                <label>PM1.0 (µg/m³)</label>
-                <input type="number" id="sim-pm10s" value="5" min="0" max="1000" step="1">
-            </div>
-            <div class="sim-field">
-                <label>PM2.5 (µg/m³)</label>
-                <input type="number" id="sim-pm25" value="12" min="0" max="1000" step="1">
-            </div>
-            <div class="sim-field">
-                <label>PM10 (µg/m³)</label>
-                <input type="number" id="sim-pm10" value="20" min="0" max="1000" step="1">
-            </div>
-            <div class="sim-field">
-                <label>TVOC (ppb)</label>
-                <input type="number" id="sim-tvoc" value="50" min="0" max="5000" step="1">
-            </div>
-            <div class="sim-field">
-                <label>eCO2 (ppm)</label>
-                <input type="number" id="sim-eco2" value="400" min="0" max="10000" step="1">
-            </div>
-            <div class="sim-field">
-                <label>Temperature (°C)</label>
-                <input type="number" id="sim-temp" value="22.5" min="-40" max="80" step="0.1">
-            </div>
-            <div class="sim-field">
-                <label>Humidity (%)</label>
-                <input type="number" id="sim-humid" value="45" min="0" max="100" step="0.1">
-            </div>
-            <div class="sim-field">
-                <label>Pressure (hPa)</label>
-                <input type="number" id="sim-press" value="1013" min="800" max="1200" step="0.1">
-            </div>
-            <div class="sim-field">
-                <label>Gas Resistance (Ω)</label>
-                <input type="number" id="sim-gas" value="50000" min="0" max="500000" step="100">
-            </div>
-            <div class="sim-field">
-                <label>MQ Analog (0-1)</label>
-                <input type="number" id="sim-mq" value="0.15" min="0" max="1" step="0.001">
-            </div>
-            <div class="sim-field">
-                <label>MQ Digital</label>
-                <select id="sim-mqd">
-                    <option value="1" selected>1 (OK)</option>
-                    <option value="0">0 (ALERT)</option>
-                </select>
-            </div>
-        </div>
-        <div class="sim-actions">
-            <button class="sim-send-btn" onclick="sendSimulation()">&#x1F4E1; Send Simulation</button>
-            <button class="sim-preset-btn" onclick="loadPreset('clean')">Clean Air</button>
-            <button class="sim-preset-btn" onclick="loadPreset('moderate')">Moderate</button>
-            <button class="sim-preset-btn" onclick="loadPreset('unhealthy')">Unhealthy</button>
-            <button class="sim-preset-btn" onclick="loadPreset('hazardous')">Hazardous</button>
-            <button class="sim-preset-btn" onclick="loadPreset('fire')">&#x1F525; Fire Sim</button>
-            <span class="sim-status" id="sim-status"></span>
         </div>
     </div>
 
@@ -1379,10 +1447,18 @@ async function pollStatus() {
         if (data.total_predictions != null) {
             document.getElementById('pred-count').textContent = data.total_predictions.toLocaleString();
         }
-        // Sync arm/disarm state from device
+        // Sync arm/disarm state from device (Digital Twin)
         if (data.alarm_armed != null) {
             isArmed = data.alarm_armed;
             updateArmUI();
+            // Show cause from device
+            const causeEl = document.getElementById('arm-cause');
+            if (data.cause) {
+                const causeTxt = data.cause.replace(/_/g, ' ');
+                causeEl.textContent = `${isArmed ? 'Armed' : 'Disarmed'} — ${causeTxt}`;
+            } else {
+                causeEl.textContent = isArmed ? 'Armed — synced' : 'Disarmed — synced';
+            }
         }
     } catch (e) {
         // Status endpoint unavailable
@@ -1413,6 +1489,12 @@ function updateArmUI() {
 async function toggleArm() {
     isArmed = !isArmed;
     updateArmUI();
+    // Show arm/disarm on OLED simulation for 2 seconds (mirrors physical OLED)
+    showOLEDOverride([
+        '================',
+        isArmed ? '  ALARM ARMED' : ' ALARM DISARMED',
+        '================'
+    ], 2000);
     document.getElementById('arm-cause').textContent = 'Sending to device...';
     try {
         const res = await fetch('/config', {
@@ -1467,8 +1549,19 @@ async function triggerTestAlarm() {
 let oledPage = 0;
 const OLED_PAGES = 4;
 let latestData = null;
+let oledOverrideMsg = null;   // temporary override message (e.g. "ARMED")
+let oledOverrideTimer = null;
+
+function showOLEDOverride(lines, durationMs) {
+    oledOverrideMsg = lines;
+    const screen = document.getElementById('oled-screen');
+    screen.innerHTML = lines.map(l => `<div>${l}</div>`).join('');
+    if (oledOverrideTimer) clearTimeout(oledOverrideTimer);
+    oledOverrideTimer = setTimeout(() => { oledOverrideMsg = null; updateOLED(); }, durationMs);
+}
 
 function updateOLED() {
+    if (oledOverrideMsg) return; // don't overwrite override
     const screen = document.getElementById('oled-screen');
     const d = latestData || {};
     const aqi = d.aqi || 0;
@@ -1482,6 +1575,12 @@ function updateOLED() {
     const line1 = `AQI:${Math.round(aqi)} ${lvl}`;
     let line2 = '—', line3 = '—';
 
+    // Use fields from server: tvoc, eco2, pressure (now stored in DB)
+    // Also check raw_input fallback for older records
+    const tvoc = d.tvoc != null ? d.tvoc : null;
+    const eco2 = d.eco2 != null ? d.eco2 : null;
+    const pres = d.pressure != null ? d.pressure : null;
+
     switch (oledPage) {
         case 0:
             line2 = `PM2.5:${d.pm25 != null ? Math.round(d.pm25) : '—'} ug`;
@@ -1493,11 +1592,11 @@ function updateOLED() {
             break;
         case 2:
             line2 = `MQ Gas:${d.mq_analog != null ? (d.mq_analog * 3.3).toFixed(2) : '—'}V`;
-            line3 = `TVOC:${d.tvoc != null ? Math.round(d.tvoc) : '—'} ppb`;
+            line3 = `TVOC:${tvoc != null ? Math.round(tvoc) : '—'} ppb`;
             break;
         case 3:
-            line2 = `eCO2:${d.eco2 != null ? Math.round(d.eco2) : '—'} ppm`;
-            line3 = `Pres:${d.pressure != null ? Math.round(d.pressure) : '—'}hPa`;
+            line2 = `eCO2:${eco2 != null ? Math.round(eco2) : '—'} ppm`;
+            line3 = `Pres:${pres != null ? Math.round(pres) : '—'}hPa`;
             break;
     }
 
@@ -1515,6 +1614,36 @@ setInterval(() => {
     oledPage = (oledPage + 1) % OLED_PAGES;
     updateOLED();
 }, 3000);
+
+// ═══════════════════════════════════════════════════════════════
+// DEVICE CONFIGURATION
+// ═══════════════════════════════════════════════════════════════
+async function sendConfig() {
+    const body = {
+        device_id:    'K64F-ember',
+        aqi_trigger:  parseInt(document.getElementById('cfg-trigger').value) || 151,
+        aqi_clear:    parseInt(document.getElementById('cfg-clear').value) || 100,
+        debounce:     parseInt(document.getElementById('cfg-debounce').value) || 3,
+        cooldown:     parseInt(document.getElementById('cfg-cooldown').value) || 30,
+    };
+    const status = document.getElementById('cfg-status');
+    status.textContent = 'Sending...';
+    status.style.color = 'var(--purple)';
+    try {
+        const res = await fetch('/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        status.textContent = '✓ Config sent to device';
+        status.style.color = 'var(--green)';
+        setTimeout(() => { status.textContent = ''; }, 3000);
+    } catch (e) {
+        status.textContent = '✗ Failed: ' + e.message;
+        status.style.color = 'var(--red)';
+    }
+}
 
 // ═══════════════════════════════════════════════════════════════
 // SIMULATION DATA INPUT

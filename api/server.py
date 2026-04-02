@@ -199,13 +199,23 @@ def status():
     }
     """
     uptime = int(time.time() - START_TIME)
-    return jsonify({
+    resp = {
         'status':             'online',
         'model_version':      MODEL_VERSION,
         'uptime_seconds':     uptime,
         'total_predictions':  get_prediction_count(),
         'server_time':        datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
-    }), 200
+    }
+    # Include hardware state from Digital Twin sync (if available)
+    with _config_lock:
+        hw = device_hw_state.get('K64F-ember', {})
+        if hw:
+            resp['alarm_armed']  = hw.get('alarm_armed', True)
+            resp['alarm_active'] = hw.get('alarm_active', False)
+            resp['fire_alert']   = hw.get('fire_alert', False)
+            resp['cause']        = hw.get('cause', '')
+            resp['hw_updated']   = hw.get('updated_at', '')
+    return jsonify(resp), 200
 
 
 # ---------------------------------------------------------------------------
