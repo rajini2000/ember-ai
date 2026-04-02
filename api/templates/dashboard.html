@@ -1497,7 +1497,7 @@ async function toggleArm() {
     ], 2000);
     document.getElementById('arm-cause').textContent = 'Sending to device...';
     try {
-        const res = await fetch('/config', {
+        const res = await fetch('/command', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ device_id: 'K64F-ember', arm: isArmed })
@@ -1524,7 +1524,7 @@ async function triggerTestAlarm() {
     status.textContent = 'Buzzing for 3 seconds...';
 
     try {
-        await fetch('/config', {
+        await fetch('/command', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ device_id: 'K64F-ember', test_alarm: true })
