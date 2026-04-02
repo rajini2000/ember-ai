@@ -113,6 +113,15 @@ def predict():
     # Run the AI model
     result = predictor.predict(sensor_data)
 
+    # Gate alarm with configured AQI trigger threshold
+    with _config_lock:
+        hw = device_hw_state.get('K64F-ember', {})
+        aqi_trigger = hw.get('cfg_aqi_trigger', 151)
+        aqi_clear   = hw.get('cfg_aqi_clear', 100)
+    aqi_val = result.get('aqi_estimate', 0) or 0
+    if result['alarm'] == 'ON' and aqi_val < aqi_trigger:
+        result['alarm'] = 'OFF'   # suppress — AQI below user threshold
+
     # Log to database with device ID
     log_prediction(sensor_data, result, device_id)
 
