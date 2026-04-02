@@ -409,7 +409,8 @@ def get_device_config():
     """
     K64F sends a small JSON with its device_id.
     Server returns any queued commands, then clears the queue.
-    Returns {} if nothing pending.
+    Always includes persistent arm_state + config so board stays in sync
+    even if a one-time command was missed (timeout, etc.).
     """
     device_id = 'K64F-ember'
     if request.is_json:
@@ -417,6 +418,15 @@ def get_device_config():
 
     with _config_lock:
         cmds = pending_commands.pop(device_id, {})
+
+        # Always include persistent arm state so board stays in sync
+        hw = device_hw_state.get(device_id, {})
+        if 'alarm_armed' in hw:
+            cmds['arm_state'] = hw['alarm_armed']
+        # Include saved config values
+        for key in ('cfg_aqi_trigger', 'cfg_aqi_clear', 'cfg_debounce', 'cfg_cooldown'):
+            if key in hw:
+                cmds[key] = hw[key]
 
     return jsonify(cmds), 200
 

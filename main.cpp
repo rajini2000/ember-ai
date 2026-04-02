@@ -549,36 +549,102 @@ void pollRemoteConfig() {
     char msg[96];
 
     // ========== DIGITAL TWIN: Apply arm/disarm from web panel (Virtual → Physical) ==========
+    // Check one-time "arm" command (from web toggle click)
     char* arm_ptr = strstr(json, "\"arm\"");
-    if (arm_ptr) {
-        bool new_armed = (strstr(arm_ptr, "true") != nullptr &&
-                          (strstr(arm_ptr, "true") - arm_ptr) < 15);
-        if (new_armed != alarm_armed) {
-            alarm_armed = new_armed;
-            snprintf(msg, sizeof(msg),
-                "[M4-CONFIG] Alarm %s via web panel\r\n",
-                alarm_armed ? "ARMED" : "DISARMED");
-            pc_print(msg);
-            if (!alarm_armed && alarm_active) {
-                alarm = 0;
-                alarm_active = false;
-                pc_print("[M4-CONFIG] Alarm silenced (disarmed)\r\n");
+    // Also check persistent "arm_state" (always included in /config response for sync)
+    char* arm_state_ptr = strstr(json, "\"arm_state\"");
+
+    // Determine the target arm state: prefer one-time "arm" command, fall back to persistent "arm_state"
+    bool have_arm_cmd = false;
+    bool new_armed = alarm_armed;  // default: no change
+
+    if (arm_ptr && (!arm_state_ptr || arm_ptr < arm_state_ptr)) {
+        // "arm" appears before "arm_state" — this is the one-time command
+        have_arm_cmd = true;
+        new_armed = (strstr(arm_ptr, "true") != nullptr &&
+                     (strstr(arm_ptr, "true") - arm_ptr) < 15);
+    } else if (arm_state_ptr) {
+        // Persistent arm_state from server (always present)
+        have_arm_cmd = true;
+        new_armed = (strstr(arm_state_ptr, "true") != nullptr &&
+                     (strstr(arm_state_ptr, "true") - arm_state_ptr) < 20);
+    }
+
+    if (have_arm_cmd && new_armed != alarm_armed) {
+        alarm_armed = new_armed;
+        snprintf(msg, sizeof(msg),
+            "[M4-CONFIG] Alarm %s via web panel\r\n",
+            alarm_armed ? "ARMED" : "DISARMED");
+        pc_print(msg);
+        if (!alarm_armed && alarm_active) {
+            alarm = 0;
+            alarm_active = false;
+            pc_print("[M4-CONFIG] Alarm silenced (disarmed)\r\n");
+        }
+        if (alarm_armed) {
+            // Re-arming: clear any cooldown so alarm can trigger immediately
+            alarm_cooldown_active = false;
+            alarm_cooldown_timer.stop();
+            // Force alarm ON if current AQI warrants it
+            if (last_aqi_score >= cfg_aqi_trigger && !alarm_active) {
+                alarm = 1;
+                alarm_active = true;
+                pc_print("[M4-CONFIG] Alarm re-engaged (AQI high)\r\n");
             }
-            if (alarm_armed) {
-                // Re-arming: clear any cooldown so alarm can trigger immediately
-                alarm_cooldown_active = false;
-                alarm_cooldown_timer.stop();
-                // Force alarm ON if current AQI warrants it
-                if (last_aqi_score >= cfg_aqi_trigger && !alarm_active) {
-                    alarm = 1;
-                    alarm_active = true;
-                    pc_print("[M4-CONFIG] Alarm re-engaged (AQI high)\r\n");
-                }
+        }
+        // Request OLED overlay (handled in main loop where OLED functions are in scope)
+        oled_arm_overlay_requested = true;
+        // DIGITAL TWIN: sync new state back to server so /status is correct
+        sendDeviceStatusToAPI(alarm_armed, alarm_active, alarm_armed ? "web_armed" : "web_disarmed");
+    }
+
+    // Also apply persistent config values from server (sent every poll)
+    char* cfg_trig_ptr = strstr(json, "\"cfg_aqi_trigger\"");
+    if (cfg_trig_ptr) {
+        char* colon = strchr(cfg_trig_ptr + 17, ':');
+        if (colon) {
+            int val = atoi(colon + 1);
+            if (val >= 50 && val <= 500 && val != cfg_aqi_trigger) {
+                cfg_aqi_trigger = val;
+                snprintf(msg, sizeof(msg), "[M4-SYNC] AQI_TRIGGER synced: %d\r\n", val);
+                pc_print(msg);
             }
-            // Request OLED overlay (handled in main loop where OLED functions are in scope)
-            oled_arm_overlay_requested = true;
-            // DIGITAL TWIN: sync new state back to server so /status is correct
-            sendDeviceStatusToAPI(alarm_armed, alarm_active, alarm_armed ? "web_armed" : "web_disarmed");
+        }
+    }
+    char* cfg_clear_p = strstr(json, "\"cfg_aqi_clear\"");
+    if (cfg_clear_p) {
+        char* colon = strchr(cfg_clear_p + 15, ':');
+        if (colon) {
+            int val = atoi(colon + 1);
+            if (val >= 25 && val <= 300 && val != cfg_aqi_clear) {
+                cfg_aqi_clear = val;
+                snprintf(msg, sizeof(msg), "[M4-SYNC] AQI_CLEAR synced: %d\r\n", val);
+                pc_print(msg);
+            }
+        }
+    }
+    char* cfg_deb_p = strstr(json, "\"cfg_debounce\"");
+    if (cfg_deb_p) {
+        char* colon = strchr(cfg_deb_p + 14, ':');
+        if (colon) {
+            int val = atoi(colon + 1);
+            if (val >= 1 && val <= 10 && val != cfg_debounce) {
+                cfg_debounce = val;
+                snprintf(msg, sizeof(msg), "[M4-SYNC] DEBOUNCE synced: %d\r\n", val);
+                pc_print(msg);
+            }
+        }
+    }
+    char* cfg_cool_p = strstr(json, "\"cfg_cooldown\"");
+    if (cfg_cool_p) {
+        char* colon = strchr(cfg_cool_p + 14, ':');
+        if (colon) {
+            int val = atoi(colon + 1);
+            if (val >= 5 && val <= 300 && val != cfg_cooldown_sec) {
+                cfg_cooldown_sec = val;
+                snprintf(msg, sizeof(msg), "[M4-SYNC] COOLDOWN synced: %d sec\r\n", val);
+                pc_print(msg);
+            }
         }
     }
 
