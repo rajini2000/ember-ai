@@ -1706,6 +1706,26 @@ async function sendSimulation() {
         const cat = data.category || '—';
         status.textContent = `✓ AQI: ${aqiVal} | Alarm: ${alarmStr} | ${cat}`;
         status.style.color = alarmStr === 'ON' ? 'var(--red)' : 'var(--green)';
+        // Also queue sim data to the board via /command so OLED shows it
+        try {
+            await fetch('/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    device_id: 'K64F-ember',
+                    sim_pm25:  body['PM2.5'],
+                    sim_pm10:  body['PM10'],
+                    sim_tvoc:  body['TVOC'],
+                    sim_eco2:  body['eCO2'],
+                    sim_temp:  body['temperature'],
+                    sim_humid: body['humidity'],
+                    sim_press: body['pressure'],
+                    sim_mq:    body['MQ_analog'],
+                    sim_aqi:   aqiVal,
+                    sim_alarm: alarmStr
+                })
+            });
+        } catch(e2) { /* best effort */ }
         // Refresh data display
         setTimeout(poll, 500);
     } catch (e) {

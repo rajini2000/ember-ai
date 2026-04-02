@@ -460,6 +460,19 @@ void logFireEventToSD(float score, float pm_delta, float mq_delta, float temp_de
 // Forward declaration (defined later, needed by pollRemoteConfig)
 void sendDeviceStatusToAPI(bool armed, bool active, const char* cause);
 
+// Sensor data struct (moved here — needed by pollRemoteConfig for sim data)
+struct SensorSnapshot {
+    uint16_t pm1_0, pm2_5, pm10;
+    uint16_t tvoc, eco2;
+    int aqi;
+    float temperature, humidity, pressure, gas_res;
+    float mq_analog;
+    int mq_digital;
+    bool pms_valid;
+};
+
+static SensorSnapshot last_snapshot = {};
+
 // ========== DIGITAL TWIN: Poll commands from web panel (Virtual → Physical) ==========
 // Polls the Render server for pending web control panel commands.
 // Arm/disarm toggle, threshold sliders, test alarm — all sync from web to board.
@@ -610,20 +623,59 @@ void pollRemoteConfig() {
         test_alarm_requested = true;
         pc_print("[M4-CONFIG] Test alarm requested from web panel\r\n");
     }
+
+    // ========== SIMULATION DATA: Override sensor snapshot from web panel ==========
+    char* sim_ptr = strstr(json, "\"sim_pm25\"");
+    if (sim_ptr) {
+        // Helper: extract float after key
+        auto extract_f = [](const char* j, const char* key) -> float {
+            const char* p = strstr(j, key);
+            if (!p) return -1;
+            p = strchr(p, ':');
+            if (!p) return -1;
+            return strtof(p + 1, nullptr);
+        };
+
+        float spm25  = extract_f(json, "\"sim_pm25\"");
+        float spm10  = extract_f(json, "\"sim_pm10\"");
+        float stvoc  = extract_f(json, "\"sim_tvoc\"");
+        float seco2  = extract_f(json, "\"sim_eco2\"");
+        float stemp  = extract_f(json, "\"sim_temp\"");
+        float shumid = extract_f(json, "\"sim_humid\"");
+        float spress = extract_f(json, "\"sim_press\"");
+        float smq    = extract_f(json, "\"sim_mq\"");
+        float saqi   = extract_f(json, "\"sim_aqi\"");
+
+        if (spm25 >= 0) last_snapshot.pm2_5 = (uint16_t)spm25;
+        if (spm10 >= 0) last_snapshot.pm10  = (uint16_t)spm10;
+        if (stvoc >= 0) last_snapshot.tvoc   = (uint16_t)stvoc;
+        if (seco2 >= 0) last_snapshot.eco2   = (uint16_t)seco2;
+        if (stemp > -100) last_snapshot.temperature = stemp;
+        if (shumid >= 0) last_snapshot.humidity = shumid;
+        if (spress >= 0) last_snapshot.pressure = spress;
+        if (smq >= 0) last_snapshot.mq_analog = smq;
+        if (saqi >= 0) { last_snapshot.aqi = (int)saqi; last_aqi_score = (int)saqi; }
+
+        // Check sim_alarm
+        char* salarm_ptr = strstr(json, "\"sim_alarm\"");
+        if (salarm_ptr && strstr(salarm_ptr, "ON") && (strstr(salarm_ptr, "ON") - salarm_ptr) < 20) {
+            if (alarm_armed && !alarm_active) {
+                alarm = 1;
+                alarm_active = true;
+            }
+        }
+
+        pc_print("[SIM] Web simulation data applied to sensors\r\n");
+        char sim_msg[128];
+        snprintf(sim_msg, sizeof(sim_msg),
+            "[SIM] PM2.5=%u TVOC=%u eCO2=%u T=%.1f AQI=%d\r\n",
+            last_snapshot.pm2_5, last_snapshot.tvoc, last_snapshot.eco2,
+            last_snapshot.temperature, last_snapshot.aqi);
+        pc_print(sim_msg);
+    }
 }
 
-// Sensor data struct for SD logging (declared early - needed by SoftAP page)
-struct SensorSnapshot {
-    uint16_t pm1_0, pm2_5, pm10;
-    uint16_t tvoc, eco2;
-    int aqi;
-    float temperature, humidity, pressure, gas_res;
-    float mq_analog;
-    int mq_digital;
-    bool pms_valid;
-};
-
-static SensorSnapshot last_snapshot = {};
+// (SensorSnapshot moved above pollRemoteConfig for sim data access)
 
 // ========== SOFTAP WEB PORTAL — WiFi Provisioning ==========
 // Saved WiFi credentials structure
