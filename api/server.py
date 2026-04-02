@@ -215,6 +215,10 @@ def status():
             resp['fire_alert']   = hw.get('fire_alert', False)
             resp['cause']        = hw.get('cause', '')
             resp['hw_updated']   = hw.get('updated_at', '')
+            # Include saved config values for dashboard refresh
+            for key in ('cfg_aqi_trigger', 'cfg_aqi_clear', 'cfg_debounce', 'cfg_cooldown'):
+                if key in hw:
+                    resp[key] = hw[key]
     return jsonify(resp), 200
 
 
@@ -376,6 +380,13 @@ def set_command():
             device_hw_state[device_id]['alarm_armed'] = bool(data['arm'])
             device_hw_state[device_id]['cause'] = 'web_panel'
             device_hw_state[device_id]['updated_at'] = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+
+        # Store config values so /status returns them on page refresh
+        if device_id not in device_hw_state:
+            device_hw_state[device_id] = {}
+        for key in ('aqi_trigger', 'aqi_clear', 'debounce', 'cooldown'):
+            if key in data:
+                device_hw_state[device_id][f'cfg_{key}'] = data[key]
 
         # Append to command log
         entry = {

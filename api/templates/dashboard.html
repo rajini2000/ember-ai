@@ -1460,6 +1460,11 @@ async function pollStatus() {
                 causeEl.textContent = isArmed ? 'Armed — synced' : 'Disarmed — synced';
             }
         }
+        // Sync device config values so refresh restores them
+        if (data.cfg_aqi_trigger != null) document.getElementById('cfg-trigger').value = data.cfg_aqi_trigger;
+        if (data.cfg_aqi_clear   != null) document.getElementById('cfg-clear').value   = data.cfg_aqi_clear;
+        if (data.cfg_debounce    != null) document.getElementById('cfg-debounce').value = data.cfg_debounce;
+        if (data.cfg_cooldown    != null) document.getElementById('cfg-cooldown').value = data.cfg_cooldown;
     } catch (e) {
         // Status endpoint unavailable
     }
@@ -1630,7 +1635,7 @@ async function sendConfig() {
     status.textContent = 'Sending...';
     status.style.color = 'var(--purple)';
     try {
-        const res = await fetch('/config', {
+        const res = await fetch('/command', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)

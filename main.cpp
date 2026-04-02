@@ -156,8 +156,11 @@ static void poll_arm_button() {
 static bool alarm_active = false;
 static Timer alarm_cooldown_timer;
 static bool alarm_cooldown_active = false;
-const int ALARM_COOLDOWN_SEC = 30;  // 30-second cooldown after manual dismiss
-static int last_aqi_score = 0;      // AQI from AI server or on-board RL
+static int cfg_aqi_trigger = 151;    // Configurable via web panel (default: UNHEALTHY)
+static int cfg_aqi_clear   = 100;    // Configurable via web panel (default: MODERATE)
+static int cfg_debounce    = 3;      // Configurable via web panel (consecutive cycles)
+static int cfg_cooldown_sec = 30;    // Configurable via web panel (seconds)
+static int last_aqi_score = 0;       // AQI from AI server or on-board RL
 
 // ========== M4 + DIGITAL TWIN: Remote Config Variables ==========
 static bool alarm_armed = true;              // DIGITAL TWIN: synced between physical button & web panel
@@ -566,7 +569,7 @@ void pollRemoteConfig() {
                 alarm_cooldown_active = false;
                 alarm_cooldown_timer.stop();
                 // Force alarm ON if current AQI warrants it
-                if (last_aqi_score >= 151 && !alarm_active) {
+                if (last_aqi_score >= cfg_aqi_trigger && !alarm_active) {
                     alarm = 1;
                     alarm_active = true;
                     pc_print("[M4-CONFIG] Alarm re-engaged (AQI high)\r\n");
@@ -579,43 +582,61 @@ void pollRemoteConfig() {
         }
     }
 
-    // Parse "aqi_trigger" — currently informational (RL model handles thresholds)
+    // Parse "aqi_trigger" — apply to runtime variable
     char* trig_ptr = strstr(json, "\"aqi_trigger\"");
     if (trig_ptr) {
         char* colon = strchr(trig_ptr + 13, ':');
         if (colon) {
             int val = atoi(colon + 1);
             if (val >= 50 && val <= 500) {
+                cfg_aqi_trigger = val;
                 snprintf(msg, sizeof(msg),
-                    "[M4-CONFIG] AQI_TRIGGER noted: %d\r\n", val);
+                    "[M4-CONFIG] AQI_TRIGGER set: %d\r\n", val);
                 pc_print(msg);
             }
         }
     }
 
-    // Parse "aqi_clear"
+    // Parse "aqi_clear" — apply to runtime variable
     char* clear_ptr = strstr(json, "\"aqi_clear\"");
     if (clear_ptr) {
         char* colon = strchr(clear_ptr + 11, ':');
         if (colon) {
             int val = atoi(colon + 1);
             if (val >= 25 && val <= 300) {
+                cfg_aqi_clear = val;
                 snprintf(msg, sizeof(msg),
-                    "[M4-CONFIG] AQI_CLEAR noted: %d\r\n", val);
+                    "[M4-CONFIG] AQI_CLEAR set: %d\r\n", val);
                 pc_print(msg);
             }
         }
     }
 
-    // Parse "debounce"
+    // Parse "debounce" — apply to runtime variable
     char* deb_ptr = strstr(json, "\"debounce\"");
     if (deb_ptr) {
         char* colon = strchr(deb_ptr + 10, ':');
         if (colon) {
             int val = atoi(colon + 1);
             if (val >= 1 && val <= 10) {
+                cfg_debounce = val;
                 snprintf(msg, sizeof(msg),
-                    "[M4-CONFIG] DEBOUNCE noted: %d\r\n", val);
+                    "[M4-CONFIG] DEBOUNCE set: %d\r\n", val);
+                pc_print(msg);
+            }
+        }
+    }
+
+    // Parse "cooldown" — apply to runtime variable
+    char* cool_ptr = strstr(json, "\"cooldown\"");
+    if (cool_ptr) {
+        char* colon = strchr(cool_ptr + 10, ':');
+        if (colon) {
+            int val = atoi(colon + 1);
+            if (val >= 5 && val <= 300) {
+                cfg_cooldown_sec = val;
+                snprintf(msg, sizeof(msg),
+                    "[M4-CONFIG] COOLDOWN set: %d sec\r\n", val);
                 pc_print(msg);
             }
         }
@@ -3291,7 +3312,7 @@ int main() {
                 // ARMED: re-arm and check if alarm should trigger
                 alarm_cooldown_active = false;
                 alarm_cooldown_timer.stop();
-                if (last_aqi_score >= 151 && !alarm_active) {
+                if (last_aqi_score >= cfg_aqi_trigger && !alarm_active) {
                     alarm = 1;
                     alarm_active = true;
                     pc_print("[ARM-BTN] Alarm ARMED (AQI high — alarm engaged)\r\n");
@@ -3442,7 +3463,7 @@ int main() {
 
         // ========== DIGITAL TWIN: Cooldown re-arm (Physical → Virtual) ==========
         if (alarm_cooldown_active) {
-            if (alarm_cooldown_timer.elapsed_time() >= std::chrono::seconds(ALARM_COOLDOWN_SEC)) {
+            if (alarm_cooldown_timer.elapsed_time() >= std::chrono::seconds(cfg_cooldown_sec)) {
                 alarm_cooldown_active = false;
                 alarm_cooldown_timer.stop();
                 alarm_armed = true;  // DIGITAL TWIN: re-arm after cooldown
