@@ -3565,11 +3565,12 @@ int main() {
             (uint16_t)last_snapshot.eco2);
 
         // RL controls alarm immediately — M4: only if armed and no test running
+        // Gate with cfg_aqi_trigger: RL can only trigger alarm if AQI >= configured threshold
         if (!alarm_cooldown_active && alarm_armed && !test_alarm_active) {
-            if (rl.alarm_on && !alarm_active) {
+            if (rl.alarm_on && !alarm_active && (int)rl.aqi >= cfg_aqi_trigger) {
                 alarm = 1;
                 alarm_active = true;
-            } else if (!rl.alarm_on && alarm_active) {
+            } else if ((!rl.alarm_on || (int)rl.aqi < cfg_aqi_clear) && alarm_active) {
                 alarm = 0;
                 alarm_active = false;
             }
@@ -3606,10 +3607,10 @@ int main() {
                 last_snapshot.aqi = ai.aqi;
                 last_aqi_score = (int)ai.aqi;
                 if (!alarm_cooldown_active && alarm_armed && !test_alarm_active) {
-                    if (ai.alarm_on && !alarm_active) {
+                    if (ai.alarm_on && !alarm_active && (int)ai.aqi >= cfg_aqi_trigger) {
                         alarm = 1;
                         alarm_active = true;
-                    } else if (!ai.alarm_on && alarm_active) {
+                    } else if ((!ai.alarm_on || (int)ai.aqi < cfg_aqi_clear) && alarm_active) {
                         alarm = 0;
                         alarm_active = false;
                     }
