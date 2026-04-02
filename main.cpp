@@ -473,6 +473,10 @@ struct SensorSnapshot {
 
 static SensorSnapshot last_snapshot = {};
 
+// Simulation hold: keep sim values on OLED for 20 seconds, skip real sensor reads
+static bool sim_hold_active = false;
+static Timer sim_hold_timer;
+
 // ========== DIGITAL TWIN: Poll commands from web panel (Virtual → Physical) ==========
 // Polls the Render server for pending web control panel commands.
 // Arm/disarm toggle, threshold sliders, test alarm — all sync from web to board.
@@ -665,7 +669,10 @@ void pollRemoteConfig() {
             }
         }
 
-        pc_print("[SIM] Web simulation data applied to sensors\r\n");
+        pc_print("[SIM] Web simulation data applied to sensors (hold 20s)\r\n");
+        sim_hold_active = true;
+        sim_hold_timer.reset();
+        sim_hold_timer.start();
         char sim_msg[128];
         snprintf(sim_msg, sizeof(sim_msg),
             "[SIM] PM2.5=%u TVOC=%u eCO2=%u T=%.1f AQI=%d\r\n",
@@ -3367,32 +3374,49 @@ int main() {
             continue;  // Skip sensor reads, AI server, etc.
         }
 
-        PMS5003Data pm = readPMS5003();
-        if (pm.valid) {
-            last_snapshot.pm1_0 = pm.pm1_0;
-            last_snapshot.pm2_5 = pm.pm2_5;
-            last_snapshot.pm10 = pm.pm10;
-            last_snapshot.pms_valid = true;
+        // Check if sim hold has expired
+        if (sim_hold_active && sim_hold_timer.elapsed_time() >= 20s) {
+            sim_hold_active = false;
+            sim_hold_timer.stop();
+            pc_print("[SIM] Hold expired, resuming real sensors\r\n");
         }
 
-        readMQSensor();
-        last_snapshot.mq_analog = mq_analog.read();
-        last_snapshot.mq_digital = mq_digital.read();
+        // Skip physical sensor reads while sim hold is active
+        if (!sim_hold_active) {
+            PMS5003Data pm = readPMS5003();
+            if (pm.valid) {
+                last_snapshot.pm1_0 = pm.pm1_0;
+                last_snapshot.pm2_5 = pm.pm2_5;
+                last_snapshot.pm10 = pm.pm10;
+                last_snapshot.pms_valid = true;
+            }
 
-        // Poll buttons between sensor reads for responsiveness
-        poll_button();
-        poll_arm_button();
+            readMQSensor();
+            last_snapshot.mq_analog = mq_analog.read();
+            last_snapshot.mq_digital = mq_digital.read();
 
-        if (bme680_available) {
-            readBME680();
-        }
+            // Poll buttons between sensor reads for responsiveness
+            poll_button();
+            poll_arm_button();
 
-        // Poll buttons after BME680 (300ms blocking)
-        poll_button();
-        poll_arm_button();
+            if (bme680_available) {
+                readBME680();
+            }
 
-        if (ens160_available) {
-            readENS160();
+            // Poll buttons after BME680 (300ms blocking)
+            poll_button();
+            poll_arm_button();
+
+            if (ens160_available) {
+                readENS160();
+            }
+        } else {
+            // Still poll buttons during sim hold
+            poll_button();
+            poll_arm_button();
+            snprintf(msg, sizeof(msg), "\r\n[SIM] Holding sim data (%ds remaining)\r\n",
+                20 - (int)(sim_hold_timer.elapsed_time().count() / 1000000));
+            pc_print(msg);
         }
 
         // --- Consolidated sensor output (1 clean line) ---
