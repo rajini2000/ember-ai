@@ -552,223 +552,249 @@
             opacity: 0.3;
         }
 
-        /* ── Fire Alert Banner ── */
-        .fire-banner {
-            display: none;
-            background: linear-gradient(135deg, rgba(239,68,68,0.12) 0%, rgba(249,115,22,0.10) 100%);
-            border: 1px solid rgba(239,68,68,0.35);
-            border-radius: var(--radius);
-            padding: 20px 28px;
+        /* ── Control Panel ── */
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
             margin-bottom: 20px;
-            animation: firePulse 2s ease-in-out infinite;
-            position: relative;
-            overflow: hidden;
         }
+        @media (max-width: 800px) { .control-grid { grid-template-columns: 1fr; } }
 
-        .fire-banner::before {
-            content: '';
-            position: absolute;
-            top: -50px;
-            right: -50px;
-            width: 200px;
-            height: 200px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(239,68,68,0.15) 0%, transparent 70%);
-            pointer-events: none;
-        }
-
-        .fire-banner.active {
+        .control-card {
+            padding: 20px 24px;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 20px;
+            gap: 14px;
         }
 
-        @keyframes firePulse {
-            0%, 100% { border-color: rgba(239,68,68,0.35); box-shadow: 0 0 20px rgba(239,68,68,0.05); }
-            50% { border-color: rgba(239,68,68,0.6); box-shadow: 0 0 30px rgba(239,68,68,0.15); }
-        }
-
-        .fire-icon {
-            font-size: 2.5rem;
-            line-height: 1;
-            flex-shrink: 0;
-            animation: fireFlicker 0.6s ease-in-out infinite alternate;
-        }
-
-        @keyframes fireFlicker {
-            0% { transform: scale(1) rotate(-3deg); }
-            100% { transform: scale(1.1) rotate(3deg); }
-        }
-
-        .fire-info { position: relative; flex: 1; }
-
-        .fire-title {
-            font-size: 1.1rem;
-            font-weight: 800;
-            color: var(--red);
-            letter-spacing: -0.01em;
-            margin-bottom: 4px;
-        }
-
-        .fire-subtitle {
-            font-size: 0.78rem;
-            color: #f87171;
-            font-weight: 500;
-            margin-bottom: 8px;
-        }
-
-        .fire-details {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
-        .fire-detail {
-            font-size: 0.72rem;
+        .control-label {
+            font-size: 0.68rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
             color: var(--text-muted);
         }
 
-        .fire-detail span {
-            color: #fca5a5;
-            font-weight: 600;
+        /* Toggle Switch */
+        .toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
         }
 
-        .fire-score-badge {
+        .toggle-track {
+            position: relative;
+            width: 52px;
+            height: 28px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            transition: background 0.3s, border-color 0.3s;
+        }
+
+        .toggle-track.armed {
+            background: rgba(34,197,94,0.2);
+            border-color: rgba(34,197,94,0.4);
+        }
+
+        .toggle-thumb {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            background: #71717a;
+            border-radius: 50%;
+            transition: transform 0.3s, background 0.3s;
+        }
+
+        .toggle-track.armed .toggle-thumb {
+            transform: translateX(24px);
+            background: var(--green);
+        }
+
+        .toggle-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            min-width: 90px;
+            transition: color 0.3s;
+        }
+
+        .toggle-label.armed { color: var(--green); }
+        .toggle-label.disarmed { color: var(--red); }
+
+        /* Test Alarm Button */
+        .test-alarm-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 24px;
+            border: 1px solid rgba(239,68,68,0.3);
+            border-radius: 8px;
+            background: rgba(239,68,68,0.08);
+            color: var(--red);
+            font-size: 0.85rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s, transform 0.1s;
+        }
+
+        .test-alarm-btn:hover {
+            background: rgba(239,68,68,0.15);
+            border-color: rgba(239,68,68,0.5);
+        }
+
+        .test-alarm-btn:active { transform: scale(0.97); }
+
+        .test-alarm-btn.active {
+            background: rgba(239,68,68,0.25);
+            border-color: var(--red);
+            animation: alarmPulse 0.6s infinite;
+        }
+
+        /* OLED Display */
+        .oled-screen {
+            width: 160px;
+            height: 72px;
+            background: #000;
+            border: 2px solid #333;
+            border-radius: 6px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-width: 80px;
-            flex-shrink: 0;
-        }
-
-        .fire-score-number {
-            font-size: 2rem;
-            font-weight: 900;
-            color: var(--red);
-            line-height: 1;
-        }
-
-        .fire-score-label {
+            font-family: 'Courier New', monospace;
             font-size: 0.65rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: #f87171;
-            margin-top: 4px;
+            color: #00ff88;
+            line-height: 1.5;
+            text-align: center;
+            padding: 4px;
         }
 
-        /* ── Fire Event Log ── */
-        .fire-log-card {
-            padding: 20px;
+        .oled-dots {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .oled-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.15);
+            transition: background 0.3s;
+        }
+
+        .oled-dot.active {
+            background: var(--green);
+            box-shadow: 0 0 6px var(--green);
+        }
+
+        /* ── Simulation Panel ── */
+        .sim-panel {
+            padding: 24px;
             margin-bottom: 20px;
         }
 
-        .fire-log-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 14px;
-        }
-
-        .fire-log-title {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        .sim-title {
             font-size: 0.82rem;
             font-weight: 600;
             color: var(--text);
+            margin-bottom: 16px;
         }
 
-        .fire-log-title .fire-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--red);
+        .sim-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
         }
 
-        .fire-log-count {
-            font-size: 0.72rem;
-            color: var(--text-dim);
-            background: rgba(239,68,68,0.08);
-            padding: 2px 10px;
-            border-radius: 10px;
-            border: 1px solid rgba(239,68,68,0.15);
-        }
+        @media (max-width: 800px) { .sim-grid { grid-template-columns: repeat(2, 1fr); } }
 
-        .fire-event-list {
+        .sim-field {
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            max-height: 400px;
-            overflow-y: auto;
+            gap: 4px;
         }
 
-        .fire-event-item {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 12px 16px;
-            background: rgba(239,68,68,0.04);
-            border: 1px solid rgba(239,68,68,0.08);
-            border-radius: var(--radius-sm);
+        .sim-field label {
+            font-size: 0.68rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .sim-field input, .sim-field select {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 10px;
+            color: var(--text);
+            font-size: 0.82rem;
+            font-family: inherit;
+            outline: none;
             transition: border-color 0.2s;
         }
 
-        .fire-event-item:hover {
-            border-color: rgba(239,68,68,0.2);
+        .sim-field input:focus, .sim-field select:focus {
+            border-color: var(--blue);
         }
 
-        .fire-event-time {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            font-variant-numeric: tabular-nums;
-            min-width: 140px;
-            flex-shrink: 0;
-        }
-
-        .fire-event-score {
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: var(--red);
-            min-width: 50px;
-        }
-
-        .fire-event-deltas {
+        .sim-actions {
             display: flex;
-            gap: 16px;
-            flex: 1;
-            font-size: 0.72rem;
-            color: var(--text-dim);
+            gap: 10px;
+            align-items: center;
         }
 
-        .fire-event-deltas span {
-            color: var(--text-muted);
-            font-weight: 500;
-        }
-
-        .fire-event-sensors {
-            display: flex;
-            gap: 12px;
-            font-size: 0.72rem;
-            color: var(--text-dim);
-        }
-
-        .fire-event-sensors span {
-            color: var(--text-muted);
-        }
-
-        .fire-empty {
-            text-align: center;
-            padding: 30px;
-            color: var(--text-dim);
+        .sim-send-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 24px;
+            border: 1px solid rgba(59,130,246,0.3);
+            border-radius: 8px;
+            background: rgba(59,130,246,0.08);
+            color: var(--blue);
             font-size: 0.82rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
         }
 
-        .fire-empty-icon {
-            font-size: 1.5rem;
-            margin-bottom: 8px;
-            opacity: 0.3;
+        .sim-send-btn:hover {
+            background: rgba(59,130,246,0.15);
+            border-color: rgba(59,130,246,0.5);
+        }
+
+        .sim-preset-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: rgba(255,255,255,0.04);
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .sim-preset-btn:hover {
+            background: rgba(255,255,255,0.08);
+            color: var(--text);
+        }
+
+        .sim-status {
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            margin-left: 12px;
         }
     </style>
 </head>
@@ -784,26 +810,6 @@
         </div>
         <div class="header-right">
             <span class="header-meta" id="last-update">Waiting for data...</span>
-        </div>
-    </div>
-
-    <!-- Fire Alert Banner (hidden by default) -->
-    <div class="fire-banner fade-in" id="fire-banner">
-        <div class="fire-icon">🔥</div>
-        <div class="fire-info">
-            <div class="fire-title">FIRE / SMOKE DETECTED</div>
-            <div class="fire-subtitle" id="fire-subtitle">Multi-sensor fusion alert triggered</div>
-            <div class="fire-details">
-                <div class="fire-detail">PM Δ: <span id="fire-pm-delta">—</span></div>
-                <div class="fire-detail">Gas Δ: <span id="fire-mq-delta">—</span></div>
-                <div class="fire-detail">Temp Δ: <span id="fire-temp-delta">—</span></div>
-                <div class="fire-detail">Time: <span id="fire-time">—</span></div>
-            </div>
-        </div>
-        <div class="fire-score-badge">
-            <div class="fire-score-number" id="fire-score">—</div>
-            <div class="fire-score-label">Fire Score</div>
-            <button onclick="clearFireAlert()" style="margin-top:10px;padding:6px 14px;border-radius:8px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;font-size:0.7rem;font-weight:600;cursor:pointer;font-family:inherit;transition:0.2s" onmouseover="this.style.background='rgba(239,68,68,0.25)'" onmouseout="this.style.background='rgba(239,68,68,0.15)'">Dismiss</button>
         </div>
     </div>
 
@@ -831,6 +837,44 @@
                 <div class="hero-stat">Device: <span id="device-id">—</span></div>
                 <div class="hero-stat">Uptime: <span id="uptime">—</span></div>
                 <div class="hero-stat">Predictions: <span id="pred-count">—</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Control Panel: Arm/Disarm + Test Alarm + OLED Display -->
+    <div class="control-grid fade-in">
+        <!-- Arm/Disarm Toggle -->
+        <div class="card control-card">
+            <div class="control-label">Alarm System</div>
+            <div class="toggle-wrap" id="arm-toggle" onclick="toggleArm()">
+                <div class="toggle-track armed" id="arm-track">
+                    <div class="toggle-thumb"></div>
+                </div>
+                <span class="toggle-label armed" id="arm-label">ARMED</span>
+            </div>
+            <div style="font-size:0.68rem;color:var(--text-dim);text-align:center;" id="arm-cause">Synced with device</div>
+        </div>
+        <!-- Test Alarm -->
+        <div class="card control-card">
+            <div class="control-label">Test Alarm</div>
+            <button class="test-alarm-btn" id="test-alarm-btn" onclick="triggerTestAlarm()">
+                &#x1F514; Test Alarm (3s)
+            </button>
+            <div style="font-size:0.68rem;color:var(--text-dim);" id="test-alarm-status">Press to trigger 3-second buzz</div>
+        </div>
+        <!-- OLED Display Simulation -->
+        <div class="card control-card">
+            <div class="control-label">OLED Display</div>
+            <div class="oled-screen" id="oled-screen">
+                <div>AQI: —</div>
+                <div>—</div>
+                <div>—</div>
+            </div>
+            <div class="oled-dots">
+                <span class="oled-dot active" id="oled-dot-0"></span>
+                <span class="oled-dot" id="oled-dot-1"></span>
+                <span class="oled-dot" id="oled-dot-2"></span>
+                <span class="oled-dot" id="oled-dot-3"></span>
             </div>
         </div>
     </div>
@@ -894,17 +938,6 @@
         </div>
     </div>
 
-    <!-- Fire Event Log -->
-    <div class="card fire-log-card fade-in" id="fire-log-section">
-        <div class="fire-log-header">
-            <div class="fire-log-title"><span class="fire-dot"></span> Fire & Smoke Events</div>
-            <span class="fire-log-count" id="fire-log-count">0 events</span>
-        </div>
-        <div class="fire-event-list" id="fire-event-list">
-            <div class="fire-empty"><div class="fire-empty-icon">🛡️</div>No fire events recorded — system monitoring</div>
-        </div>
-    </div>
-
     <!-- Data Table -->
     <div class="card table-card fade-in">
         <div class="table-header">
@@ -930,6 +963,69 @@
                     <tr><td colspan="9" class="no-data"><div class="no-data-icon">📡</div>Waiting for sensor data...</td></tr>
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Simulation Data Input Panel -->
+    <div class="card sim-panel fade-in">
+        <div class="sim-title">&#x1F9EA; Simulation Data Input</div>
+        <div class="sim-grid">
+            <div class="sim-field">
+                <label>PM1.0 (µg/m³)</label>
+                <input type="number" id="sim-pm10s" value="5" min="0" max="1000" step="1">
+            </div>
+            <div class="sim-field">
+                <label>PM2.5 (µg/m³)</label>
+                <input type="number" id="sim-pm25" value="12" min="0" max="1000" step="1">
+            </div>
+            <div class="sim-field">
+                <label>PM10 (µg/m³)</label>
+                <input type="number" id="sim-pm10" value="20" min="0" max="1000" step="1">
+            </div>
+            <div class="sim-field">
+                <label>TVOC (ppb)</label>
+                <input type="number" id="sim-tvoc" value="50" min="0" max="5000" step="1">
+            </div>
+            <div class="sim-field">
+                <label>eCO2 (ppm)</label>
+                <input type="number" id="sim-eco2" value="400" min="0" max="10000" step="1">
+            </div>
+            <div class="sim-field">
+                <label>Temperature (°C)</label>
+                <input type="number" id="sim-temp" value="22.5" min="-40" max="80" step="0.1">
+            </div>
+            <div class="sim-field">
+                <label>Humidity (%)</label>
+                <input type="number" id="sim-humid" value="45" min="0" max="100" step="0.1">
+            </div>
+            <div class="sim-field">
+                <label>Pressure (hPa)</label>
+                <input type="number" id="sim-press" value="1013" min="800" max="1200" step="0.1">
+            </div>
+            <div class="sim-field">
+                <label>Gas Resistance (Ω)</label>
+                <input type="number" id="sim-gas" value="50000" min="0" max="500000" step="100">
+            </div>
+            <div class="sim-field">
+                <label>MQ Analog (0-1)</label>
+                <input type="number" id="sim-mq" value="0.15" min="0" max="1" step="0.001">
+            </div>
+            <div class="sim-field">
+                <label>MQ Digital</label>
+                <select id="sim-mqd">
+                    <option value="1" selected>1 (OK)</option>
+                    <option value="0">0 (ALERT)</option>
+                </select>
+            </div>
+        </div>
+        <div class="sim-actions">
+            <button class="sim-send-btn" onclick="sendSimulation()">&#x1F4E1; Send Simulation</button>
+            <button class="sim-preset-btn" onclick="loadPreset('clean')">Clean Air</button>
+            <button class="sim-preset-btn" onclick="loadPreset('moderate')">Moderate</button>
+            <button class="sim-preset-btn" onclick="loadPreset('unhealthy')">Unhealthy</button>
+            <button class="sim-preset-btn" onclick="loadPreset('hazardous')">Hazardous</button>
+            <button class="sim-preset-btn" onclick="loadPreset('fire')">&#x1F525; Fire Sim</button>
+            <span class="sim-status" id="sim-status"></span>
         </div>
     </div>
 
@@ -1230,8 +1326,10 @@ async function poll() {
         allRows = rows;
 
         const latest = rows[0];
+        latestData = latest;  // OLED simulation uses this
         updateHero(latest);
         updateMetrics(latest, rows);
+        updateOLED();
 
         // Push only NEW points to charts
         const newRows = lastId == null
@@ -1281,106 +1379,217 @@ async function pollStatus() {
         if (data.total_predictions != null) {
             document.getElementById('pred-count').textContent = data.total_predictions.toLocaleString();
         }
+        // Sync arm/disarm state from device
+        if (data.alarm_armed != null) {
+            isArmed = data.alarm_armed;
+            updateArmUI();
+        }
     } catch (e) {
         // Status endpoint unavailable
     }
 }
 
-// ── Fire Alert Polling ──
-async function pollFireState() {
-    try {
-        // Check device state for active fire alert
-        const stateRes = await fetch('/device_state?device_id=K64F-ember');
-        const state = await stateRes.json();
+// ═══════════════════════════════════════════════════════════════
+// DIGITAL TWIN: Arm/Disarm Toggle
+// ═══════════════════════════════════════════════════════════════
+let isArmed = true;
 
-        const banner = document.getElementById('fire-banner');
-
-        if (state.fire_alert) {
-            banner.classList.add('active');
-            document.getElementById('fire-score').textContent =
-                state.fire_score != null ? (state.fire_score * 100).toFixed(0) + '%' : '—';
-            document.getElementById('fire-time').textContent =
-                state.fire_time || '—';
-        } else {
-            banner.classList.remove('active');
-        }
-    } catch (e) {
-        // Fire state endpoint unavailable
+function updateArmUI() {
+    const track = document.getElementById('arm-track');
+    const label = document.getElementById('arm-label');
+    if (isArmed) {
+        track.classList.add('armed');
+        label.classList.add('armed');
+        label.classList.remove('disarmed');
+        label.textContent = 'ARMED';
+    } else {
+        track.classList.remove('armed');
+        label.classList.remove('armed');
+        label.classList.add('disarmed');
+        label.textContent = 'DISARMED';
     }
 }
 
-async function clearFireAlert() {
+async function toggleArm() {
+    isArmed = !isArmed;
+    updateArmUI();
+    document.getElementById('arm-cause').textContent = 'Sending to device...';
     try {
-        await fetch('/fire_clear', { method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({device_id: 'K64F-ember'})
+        const res = await fetch('/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ device_id: 'K64F-ember', arm: isArmed })
         });
-        document.getElementById('fire-banner').classList.remove('active');
-    } catch (e) { console.error('Failed to clear fire alert:', e); }
+        const data = await res.json();
+        document.getElementById('arm-cause').textContent = isArmed ? 'Armed — synced' : 'Disarmed — synced';
+    } catch (e) {
+        document.getElementById('arm-cause').textContent = 'Sync failed — retrying...';
+    }
 }
 
-async function pollFireLog() {
+// ═══════════════════════════════════════════════════════════════
+// DIGITAL TWIN: Test Alarm (3 seconds)
+// ═══════════════════════════════════════════════════════════════
+let testAlarmActive = false;
+
+async function triggerTestAlarm() {
+    if (testAlarmActive) return;
+    testAlarmActive = true;
+    const btn = document.getElementById('test-alarm-btn');
+    const status = document.getElementById('test-alarm-status');
+    btn.classList.add('active');
+    btn.textContent = '🔔 ALARM ACTIVE...';
+    status.textContent = 'Buzzing for 3 seconds...';
+
     try {
-        const res = await fetch('/fire_log');
-        const data = await res.json();
-        const log = data.log || [];
-
-        const listEl = document.getElementById('fire-event-list');
-        const countEl = document.getElementById('fire-log-count');
-        countEl.textContent = log.length + ' event' + (log.length !== 1 ? 's' : '');
-
-        if (!log.length) {
-            listEl.innerHTML = '<div class="fire-empty"><div class="fire-empty-icon">🛡️</div>No fire events recorded — system monitoring</div>';
-            return;
-        }
-
-        // Show most recent first
-        const reversed = [...log].reverse();
-        listEl.innerHTML = reversed.map(entry => {
-            const d = entry.data || {};
-            const time = entry.received_at || '—';
-            const score = d.fire_score != null ? (d.fire_score * 100).toFixed(0) + '%' : '—';
-            const pmD  = d.pm_delta != null ? d.pm_delta.toFixed(1) : '—';
-            const mqD  = d.mq_delta != null ? d.mq_delta.toFixed(4) : '—';
-            const tmpD = d.temp_delta != null ? d.temp_delta.toFixed(1) : '—';
-            const pm25 = d.pm2_5 != null ? d.pm2_5 : (d.pm25 != null ? d.pm25 : '—');
-            const temp = d.temperature != null ? d.temperature.toFixed(1) : '—';
-            const mq   = d.mq_analog != null ? d.mq_analog.toFixed(4) : '—';
-
-            return `<div class="fire-event-item">
-                <div class="fire-event-time">${time}</div>
-                <div class="fire-event-score">${score}</div>
-                <div class="fire-event-deltas">
-                    PM Δ <span>${pmD}</span> · Gas Δ <span>${mqD}</span> · Temp Δ <span>${tmpD}°C</span>
-                </div>
-                <div class="fire-event-sensors">
-                    PM2.5 <span>${pm25}</span> · T <span>${temp}°C</span> · MQ <span>${mq}V</span>
-                </div>
-            </div>`;
-        }).join('');
-
-        // Update banner with latest fire event details
-        if (reversed.length > 0) {
-            const latest = reversed[0].data || {};
-            if (latest.pm_delta != null) document.getElementById('fire-pm-delta').textContent = latest.pm_delta.toFixed(1);
-            if (latest.mq_delta != null) document.getElementById('fire-mq-delta').textContent = latest.mq_delta.toFixed(4);
-            if (latest.temp_delta != null) document.getElementById('fire-temp-delta').textContent = latest.temp_delta.toFixed(1) + '°C';
-        }
-
+        await fetch('/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ device_id: 'K64F-ember', test_alarm: true })
+        });
     } catch (e) {
-        // Fire log endpoint unavailable
+        status.textContent = 'Failed to reach device';
+    }
+
+    // Auto-clear after 3 seconds (matches physical device)
+    setTimeout(() => {
+        testAlarmActive = false;
+        btn.classList.remove('active');
+        btn.textContent = '🔔 Test Alarm (3s)';
+        status.textContent = 'Test complete';
+        setTimeout(() => { status.textContent = 'Press to trigger 3-second buzz'; }, 2000);
+    }, 3000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DIGITAL TWIN: OLED Display Simulation (auto-cycle every 3s)
+// ═══════════════════════════════════════════════════════════════
+let oledPage = 0;
+const OLED_PAGES = 4;
+let latestData = null;
+
+function updateOLED() {
+    const screen = document.getElementById('oled-screen');
+    const d = latestData || {};
+    const aqi = d.aqi || 0;
+    let lvl = 'GOOD';
+    if (aqi > 300)      lvl = 'HAZ';
+    else if (aqi > 200) lvl = 'V.BAD';
+    else if (aqi > 150) lvl = 'BAD';
+    else if (aqi > 100) lvl = 'USG';
+    else if (aqi > 50)  lvl = 'MOD';
+
+    const line1 = `AQI:${Math.round(aqi)} ${lvl}`;
+    let line2 = '—', line3 = '—';
+
+    switch (oledPage) {
+        case 0:
+            line2 = `PM2.5:${d.pm25 != null ? Math.round(d.pm25) : '—'} ug`;
+            line3 = `PM10:${d.pm10 != null ? Math.round(d.pm10) : '—'} ug`;
+            break;
+        case 1:
+            line2 = `Temp:${d.temperature != null ? d.temperature.toFixed(1) : '—'}C`;
+            line3 = `Hum:${d.humidity != null ? Math.round(d.humidity) : '—'}%`;
+            break;
+        case 2:
+            line2 = `MQ Gas:${d.mq_analog != null ? (d.mq_analog * 3.3).toFixed(2) : '—'}V`;
+            line3 = `TVOC:${d.tvoc != null ? Math.round(d.tvoc) : '—'} ppb`;
+            break;
+        case 3:
+            line2 = `eCO2:${d.eco2 != null ? Math.round(d.eco2) : '—'} ppm`;
+            line3 = `Pres:${d.pressure != null ? Math.round(d.pressure) : '—'}hPa`;
+            break;
+    }
+
+    screen.innerHTML = `<div>${line1}</div><div>${line2}</div><div>${line3}</div>`;
+
+    // Update dots
+    for (let i = 0; i < OLED_PAGES; i++) {
+        const dot = document.getElementById(`oled-dot-${i}`);
+        if (dot) dot.classList.toggle('active', i === oledPage);
+    }
+}
+
+// Auto-cycle OLED pages every 3 seconds (matches physical device)
+setInterval(() => {
+    oledPage = (oledPage + 1) % OLED_PAGES;
+    updateOLED();
+}, 3000);
+
+// ═══════════════════════════════════════════════════════════════
+// SIMULATION DATA INPUT
+// ═══════════════════════════════════════════════════════════════
+const PRESETS = {
+    clean:     { pm10s: 3, pm25: 5, pm10: 8, tvoc: 20, eco2: 400, temp: 22.0, humid: 45, press: 1013, gas: 80000, mq: 0.08, mqd: 1 },
+    moderate:  { pm10s: 20, pm25: 45, pm10: 60, tvoc: 200, eco2: 800, temp: 24.0, humid: 55, press: 1010, gas: 40000, mq: 0.25, mqd: 1 },
+    unhealthy: { pm10s: 80, pm25: 160, pm10: 200, tvoc: 800, eco2: 2000, temp: 28.0, humid: 65, press: 1005, gas: 15000, mq: 0.55, mqd: 0 },
+    hazardous: { pm10s: 250, pm25: 400, pm10: 500, tvoc: 3000, eco2: 5000, temp: 35.0, humid: 80, press: 998, gas: 5000, mq: 0.85, mqd: 0 },
+    fire:      { pm10s: 300, pm25: 500, pm10: 600, tvoc: 4000, eco2: 8000, temp: 55.0, humid: 90, press: 995, gas: 2000, mq: 0.95, mqd: 0 },
+};
+
+function loadPreset(name) {
+    const p = PRESETS[name];
+    if (!p) return;
+    document.getElementById('sim-pm10s').value = p.pm10s;
+    document.getElementById('sim-pm25').value = p.pm25;
+    document.getElementById('sim-pm10').value = p.pm10;
+    document.getElementById('sim-tvoc').value = p.tvoc;
+    document.getElementById('sim-eco2').value = p.eco2;
+    document.getElementById('sim-temp').value = p.temp;
+    document.getElementById('sim-humid').value = p.humid;
+    document.getElementById('sim-press').value = p.press;
+    document.getElementById('sim-gas').value = p.gas;
+    document.getElementById('sim-mq').value = p.mq;
+    document.getElementById('sim-mqd').value = p.mqd;
+    document.getElementById('sim-status').textContent = `Loaded "${name}" preset`;
+    setTimeout(() => { document.getElementById('sim-status').textContent = ''; }, 2000);
+}
+
+async function sendSimulation() {
+    const body = {
+        'PM1.0':       parseFloat(document.getElementById('sim-pm10s').value) || 0,
+        'PM2.5':       parseFloat(document.getElementById('sim-pm25').value) || 0,
+        'PM10':        parseFloat(document.getElementById('sim-pm10').value) || 0,
+        'TVOC':        parseFloat(document.getElementById('sim-tvoc').value) || 0,
+        'eCO2':        parseFloat(document.getElementById('sim-eco2').value) || 0,
+        'temperature': parseFloat(document.getElementById('sim-temp').value) || 0,
+        'humidity':    parseFloat(document.getElementById('sim-humid').value) || 0,
+        'pressure':    parseFloat(document.getElementById('sim-press').value) || 0,
+        'gas':         parseFloat(document.getElementById('sim-gas').value) || 0,
+        'MQ_analog':   parseFloat(document.getElementById('sim-mq').value) || 0,
+        'MQ_digital':  parseInt(document.getElementById('sim-mqd').value) || 0,
+        'device_id':   'K64F-ember-sim'
+    };
+
+    const status = document.getElementById('sim-status');
+    status.textContent = 'Sending...';
+    status.style.color = 'var(--blue)';
+
+    try {
+        const res = await fetch('/predict', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        const alarmStr = data.alarm || 'OFF';
+        const aqiVal = data.aqi != null ? Math.round(data.aqi) : '—';
+        const cat = data.category || '—';
+        status.textContent = `✓ AQI: ${aqiVal} | Alarm: ${alarmStr} | ${cat}`;
+        status.style.color = alarmStr === 'ON' ? 'var(--red)' : 'var(--green)';
+        // Refresh data display
+        setTimeout(poll, 500);
+    } catch (e) {
+        status.textContent = '✗ Failed to send: ' + e.message;
+        status.style.color = 'var(--red)';
     }
 }
 
 // ── Start ──
 poll();
 pollStatus();
-pollFireState();
-pollFireLog();
 setInterval(poll, POLL_MS);
 setInterval(pollStatus, 15000);
-setInterval(pollFireState, 3000);
-setInterval(pollFireLog, 5000);
 
 </script>
 </body>
