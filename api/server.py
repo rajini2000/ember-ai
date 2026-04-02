@@ -144,11 +144,9 @@ def predict():
         'timestamp': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
     }
 
-    # Attach and consume pending commands (atomic)
-    with _config_lock:
-        cmds = pending_commands.pop(device_id, None)
-        if cmds:
-            response['config'] = cmds
+    # NOTE: pending commands are delivered exclusively via /config endpoint.
+    # Do NOT pop pending_commands here — /predict used to consume them silently,
+    # causing arm/disarm and test_alarm commands from the web to be lost.
 
     return jsonify(response), 200
 
@@ -487,14 +485,17 @@ def post_device_status():
     device_id = data.get('device_id', 'K64F-ember')
 
     with _config_lock:
-        device_hw_state[device_id] = {
+        # Use .update() instead of = to preserve cfg_* config values stored by /command
+        if device_id not in device_hw_state:
+            device_hw_state[device_id] = {}
+        device_hw_state[device_id].update({
             'alarm_armed':      data.get('alarm_armed', True),
             'alarm_active':     data.get('alarm_active', False),
             'buzzer_connected': data.get('buzzer_connected', True),
             'fire_alert':       data.get('fire_alert', False),
             'cause':            data.get('cause', ''),
             'updated_at':       datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC'),
-        }
+        })
 
         # Also update device_state for dashboard consistency
         if device_id not in device_state:
