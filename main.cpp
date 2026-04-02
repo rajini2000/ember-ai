@@ -457,11 +457,14 @@ void sendFireAlertToAPI(float score, float pm_delta, float mq_delta, float temp_
 void logFireEventToSD(float score, float pm_delta, float mq_delta, float temp_delta);
 
 // ========== M4: REMOTE CONFIG POLLING ==========
+// Forward declaration (defined later, needed by pollRemoteConfig)
+void sendDeviceStatusToAPI(bool armed, bool active, const char* cause);
+
 // ========== DIGITAL TWIN: Poll commands from web panel (Virtual → Physical) ==========
 // Polls the Render server for pending web control panel commands.
 // Arm/disarm toggle, threshold sliders, test alarm — all sync from web to board.
 // Uses AT+HTTPCPOST to POST /config endpoint.
-// Called every cycle (~2s) to meet the <5s update requirement.
+// Called every 3rd cycle (~6s) to reduce network overhead.
 void pollRemoteConfig() {
     char resp[512];
     const char* body = "{\"device_id\":\"K64F-ember\"}";
@@ -554,6 +557,8 @@ void pollRemoteConfig() {
             }
             // Request OLED overlay (handled in main loop where OLED functions are in scope)
             oled_arm_overlay_requested = true;
+            // DIGITAL TWIN: sync new state back to server so /status is correct
+            sendDeviceStatusToAPI(alarm_armed, alarm_active, alarm_armed ? "web_armed" : "web_disarmed");
         }
     }
 

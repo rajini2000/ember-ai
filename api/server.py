@@ -368,6 +368,15 @@ def set_command():
             pending_commands[device_id] = {}
         pending_commands[device_id].update(data)
 
+        # Immediately update device_hw_state for arm/disarm so /status reflects
+        # the new state even before the board polls /config
+        if 'arm' in data:
+            if device_id not in device_hw_state:
+                device_hw_state[device_id] = {}
+            device_hw_state[device_id]['alarm_armed'] = bool(data['arm'])
+            device_hw_state[device_id]['cause'] = 'web_panel'
+            device_hw_state[device_id]['updated_at'] = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+
         # Append to command log
         entry = {
             'time':      datetime.now(timezone.utc).strftime('%H:%M:%S'),
